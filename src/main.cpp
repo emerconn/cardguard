@@ -1,4 +1,5 @@
 #include <Arduino_GFX_Library.h>
+#include "chip_leader.h"
 
 // TODO: placeholder pins. Replace with the seller's pinout before flashing.
 #define PIN_SCK  6
@@ -16,7 +17,7 @@ void setup() {
   pinMode(PIN_BL, OUTPUT);
   digitalWrite(PIN_BL, HIGH);
   if (!gfx->begin()) Serial.println("gfx->begin() failed");
-  gfx->fillScreen(RGB565_RED);  // first test: whole screen red
+  drawChipLeader(gfx, {"Emerson", 12500});  // placeholder data
 }
 
 void loop() {}
