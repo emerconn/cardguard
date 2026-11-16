@@ -1,4 +1,5 @@
 #include <Arduino_GFX_Library.h>
+#include "guards.h"
 
 // TODO: placeholder pins. Replace with the seller's pinout before flashing.
 #define PIN_SCK  6
@@ -7,16 +8,33 @@
 #define PIN_CS   10
 #define PIN_RST  1
 #define PIN_BL   3
+#define PIN_BTN  9  // BOOT button on most ESP32-C3 boards; wire an external one if needed
 
 Arduino_DataBus *bus = new Arduino_ESP32SPI(PIN_DC, PIN_CS, PIN_SCK, PIN_MOSI, GFX_NOT_DEFINED);
 Arduino_GFX *gfx = new Arduino_GC9A01(bus, PIN_RST, 0 /* rotation */, true /* IPS */);
+
+int current = 0;
+
+void show(int i) {
+  current = (i + GUARD_COUNT) % GUARD_COUNT;
+  GUARDS[current](gfx);
+}
 
 void setup() {
   Serial.begin(115200);
   pinMode(PIN_BL, OUTPUT);
   digitalWrite(PIN_BL, HIGH);
+  pinMode(PIN_BTN, INPUT_PULLUP);
   if (!gfx->begin()) Serial.println("gfx->begin() failed");
-  gfx->fillScreen(RGB565_RED);  // first test: whole screen red
+  show(0);
 }
 
-void loop() {}
+void loop() {
+  // shortcut: blocking debounce, fine until other work runs in loop()
+  if (digitalRead(PIN_BTN) == LOW) {
+    show(current + 1);
+    delay(300);
+    while (digitalRead(PIN_BTN) == LOW) delay(10);
+  }
+  // TODO: wireless switching (small web page) calls show() too.
+}
