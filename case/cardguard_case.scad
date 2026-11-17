@@ -37,7 +37,7 @@ module_xy = [0, 11.5];  // ESP32-C3 module (13.2 x 12.5, metal can), centre esti
 z_module_top = z_pcb_back + 2.4;
 z_usb_top = z_pcb_back + usb_h;
 
-sw_y = -0.3;            // power switch lever centre (19.7 from the tab end), on the +x edge
+sw_y = 0;               // power switch lever centre, on the +x edge: centred on the board (5a gave 19.7 from the tab end, within caliper error)
 sw_len = 2.0;           // lever size along the edge
 sw_housing = [2.0, 4.6, 2.5];  // switch body: depth into the board (est.), length along the edge, height (est.)
 
@@ -63,12 +63,11 @@ lid_t = 2.0;
 step_w = 0.8;           // stepped rim: ledge cut into the shell wall's top edge, the lid's flange rests on it
 step_h = 0.8;           // (holds the lid up all round, so pressing near an edge can't tip it)
 fit = 0.05;             // lid edge to shell wall, each side (0.1 printed loose; raise if too tight to push in)
-press_gap = 0.2;        // lid posts to the module / USB tops (0 = touching; 0.1 rocked slightly on the posts)
-btn_hole_extra = 0.6;   // REST pin hole over the plunger, total
-flex = [8, 5];          // BOOT flex tab: tongue length (radial, hinged at the centre end; under ~7 PLA may crack) x width
+press_gap = 0.3;        // lid posts to the module / USB tops (0 = touching; 0.1 and 0.2 still sat on the posts)
+flex = [7, 5];          // button flex tabs: tongue length (radial, hinged at the centre end; 8 worked, 6 is near PLA's crack limit) x width
 flex_t = 1.0;           // tongue thickness (thinner = softer press)
 flex_slot = 0.6;        // cut round the tongue
-flex_gap = 0.2;         // peg tip to the BOOT plunger
+flex_gap = 0.4;         // peg tip to the button plunger; keep above press_gap (0.2 clicked when pressing the whole lid)
 plug = [11, 6.6];       // USB opening, sized for a plug overmold so most cables seat fully;
                         // wider cuts through the case corner, since the port is off-centre
 plug_r = 1.5;
@@ -121,10 +120,10 @@ module shell() {
   }
 }
 
-// BOOT flex tab: tongue pointing out from the centre through the button (BOOT is ~3 from the rim, so a
+// Flex tabs over REST and BOOT: tongue pointing out from the centre through the button (~3 from the rim, so a
 // tongue along x would cut through the edge), free end 1 past the button
 btn_r = norm([btn_x, btn_y]);
-module flex_local() { rotate(atan2(btn_y, btn_x)) children(); }
+module flex_local() { for (m = [0, 1]) mirror([m, 0]) rotate(atan2(btn_y, btn_x)) children(); }  // BOOT, mirrored for REST
 module flex_tongue() { flex_local() translate([btn_r + 1 - flex[0], -flex[1] / 2]) square(flex); }
 module flex_cut() {  // U round the tongue, open at the hinge
   flex_local() difference() {
@@ -134,8 +133,8 @@ module flex_cut() {  // U round the tongue, open at the hinge
 }
 
 module lid() {
-  // peg under the tongue presses BOOT
-  translate([btn_x, btn_y, z_btn_top + flex_gap]) cylinder(h = z_top - flex_t - z_btn_top - flex_gap + 0.01, d = 2, $fn = 48);
+  // pegs under the tongues press the buttons
+  for (s = [-1, 1]) translate([s * btn_x, btn_y, z_btn_top + flex_gap]) cylinder(h = z_top - flex_t - z_btn_top - flex_gap + 0.01, d = 2, $fn = 48);
   difference() {
     union() {
       translate([0, 0, z_lid]) linear_extrude(lid_t) offset(delta = -fit) pocket_outline();
@@ -144,9 +143,8 @@ module lid() {
       translate([module_xy[0], module_xy[1], z_module_top + press_gap]) cylinder(h = z_lid - z_module_top - press_gap + 0.01, d = 4);
       translate([usb_x - 3, -tab_end + 1, z_usb_top + press_gap]) cube([6, 3, z_lid - z_usb_top - press_gap + 0.01]);
     }
-    translate([-btn_x, btn_y, z_lid - 1]) linear_extrude(lid_t + 2) oval(plunger + [1, 1] * btn_hole_extra);  // REST pin hole
     translate([0, 0, z_lid - 1]) linear_extrude(lid_t + 2) flex_cut();
-    translate([0, 0, z_lid - 1]) linear_extrude(z_top - flex_t - z_lid + 1) flex_tongue();  // thin the tongue from the inside
+    translate([0, 0, z_lid - 1]) linear_extrude(z_top - flex_t - z_lid + 1) flex_tongue();  // thin the tongues from the inside
   }
 }
 
