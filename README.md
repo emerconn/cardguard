@@ -63,8 +63,8 @@ Target: **~20 designs**, each a crisp digital (vector-style) design, not a photo
 | 2026-11-16 | Renderer: 3 strips of 80 rows, shapes skip strips before setup maths, integer sqrt / edge maths, `-O2` | Designs went from ~420 ms to 112-165 ms with no visible change (renders compared pixel by pixel) |
 | 2026-11-16 | Display SPI at 80 MHz (library default 40) | Halves the 30 ms push; checked on the real panel |
 | 2026-11-16 | `Serial.setTxTimeoutMs(0)` | With no serial monitor open, each print blocked ~2 s once the USB buffer filled, freezing the button |
-| 2026-11-17 | BLE guard select via NimBLE-Arduino, one write-only characteristic; test with nRF Connect before any app | Lighter than the stock BLE stack (+~250 KB flash total, 657 KB used); same firmware serves a later Bluefy page or iOS app |
 | 2026-11-16 | Shared `TextStyle`s in `guards.cpp`; serif only at large sizes | Small serif text rendered blurry; one set of fonts and sizes keeps designs consistent |
+| 2026-11-17 | BLE guard select via NimBLE-Arduino, one write-only characteristic; test with nRF Connect before any app | Lighter than the stock BLE stack (+~250 KB flash total, 657 KB used); same firmware serves a later Bluefy page or iOS app |
 
 ### Renderer vs SVG (renderer chosen)
 
