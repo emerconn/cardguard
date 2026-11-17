@@ -17,6 +17,9 @@ Needs OpenSCAD 2025+ (Manifold backend, renders in seconds). Arch: `omarchy pkg 
 
 ## Build
 
+`shell.stl` and `lid.stl` are committed (for the slicer on another machine). Regenerate both whenever the
+`.scad` changes, in the same commit.
+
 ```sh
 cd case
 openscad -D 'part="shell"' -o shell.stl cardguard_case.scad

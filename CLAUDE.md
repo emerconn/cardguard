@@ -14,3 +14,9 @@ architecture decisions in the README's Decisions table.
 3. New characters in text: add them to the lists in `tools/fonts.sh` and run it.
 4. Check it with `tools/preview/run.sh` (view `preview/guard_N.png`, scaled up) against the reference.
 5. Flash and time it: `pio run -t upload && python3 tools/drawtime.py`. Keep designs well under ~500 ms.
+
+## Case (`case/`)
+
+The STLs are committed so the Windows slicer (Creality Print) can pull them. Whenever
+`case/cardguard_case.scad` changes, regenerate both `case/shell.stl` and `case/lid.stl` and commit them in
+the same commit, so every print maps to a design version.
