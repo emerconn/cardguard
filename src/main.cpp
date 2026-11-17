@@ -25,10 +25,11 @@ void show(int i) {
 
 void setup() {
   Serial.begin(115200);
+  Serial.setTxTimeoutMs(0);  // drop output nobody reads; the default 2 s wait froze the button after ~10 prints
   pinMode(PIN_BL, OUTPUT);
   digitalWrite(PIN_BL, HIGH);
   pinMode(PIN_BTN, INPUT_PULLUP);
-  if (!gfx->begin()) Serial.println("gfx->begin() failed");
+  if (!gfx->begin(80000000)) Serial.println("gfx->begin() failed");  // 80 MHz SPI: library default is 40
   show(0);
 }
 

@@ -1,14 +1,16 @@
 #pragma once
 // A tiny anti-aliased renderer. Scenes are plain functions that call these shape methods in
-// painter's order; smoothDraw() runs the scene once per 40-row strip into a 19 KB buffer and
+// painter's order; smoothDraw() runs the scene once per 80-row strip into a 38 KB buffer and
 // pushes each strip to the screen, so a full 115 KB frame never has to fit in RAM.
 //
 // The ESP32-C3 has no FPU, so per-pixel work is integer: float math happens once per shape or
 // per row, inner loops step 16.16 fixed-point values, and sqrt only runs on edge pixels.
+// The scene runs once per strip, so every shape first checks it touches the strip before any setup maths.
 #include <Arduino_GFX.h>
+#pragma GCC optimize("O2")  // ~20% faster than the framework's -Os for these pixel loops
 
 struct Smooth {
-  static const int W = 240, STRIP = 40;
+  static const int W = 240, STRIP = 80;
   uint16_t buf[W * STRIP];
   int y0 = 0;                    // first screen row held in buf
   int32_t clipIn = 0, clipOut = 0;  // optional circular clip, squared radii in doubled pixel units
@@ -44,6 +46,16 @@ struct Smooth {
     p = k >= 32 ? c : mix(p, c, k);
   }
 
+  bool skip(float top, float bottom) const { return bottom < y0 || top >= y0 + STRIP; }
+
+  static uint32_t isqrt(uint32_t v) {  // integer sqrt, far cheaper than soft-float sqrtf
+    uint32_t r = 0;
+    for (uint32_t b = 1u << 30; b; b >>= 2)
+      if (v >= r + b) v -= r + b, r = (r >> 1) + b;
+      else r >>= 1;
+    return r;
+  }
+
   // Rows of the current strip that overlap [top, bottom).
   int rowLo(float top) const { return max(y0, (int)floorf(top)); }
   int rowHi(float bottom) const { return min(y0 + STRIP, (int)ceilf(bottom)); }
@@ -55,26 +67,31 @@ struct Smooth {
   // Filled circle; with c1 != c0 it is shaded diagonally from c0 (top-left) to c1 (bottom-right).
   // hole > 0 skips the middle (radius hole - 1) when a later shape will cover it anyway.
   void circle(float cx, float cy, float r, uint16_t c0, uint16_t c1, float hole = 0) {
-    float g = 32 / (2.8f * r), inv2r = 0.5f / r;
+    if (skip(cy - r - 1, cy + r + 1)) return;
+    // Positions in 24.8 fixed point; their squares carry 16 fraction bits, so sqrt gives 8 again.
+    int32_t cx8 = lroundf(cx * 256), cy8 = lroundf(cy * 256);
+    int32_t out2 = lroundf((r + 0.5f) * (r + 0.5f) * 65536), in2 = r > 0.5f ? lroundf((r - 0.5f) * (r - 0.5f) * 65536) : -1;
+    int32_t hole2 = hole > 1 ? lroundf((hole - 1) * (hole - 1) * 65536) : -1, r2 = lroundf(r * r * 65536);
+    int64_t inv2r = lroundf(65536 / (2 * r));            // edge distance (|p|^2 - r^2) / 2r, in 16.16
+    int64_t g = lroundf(32 / (2.8f * r) * 65536);        // gradient step per pixel, 16.16
     for (int y = rowLo(cy - r - 1); y < rowHi(cy + r + 1); y++) {
-      float dy = y + 0.5f - cy;
-      if (fabsf(dy) >= r + 0.5f) continue;
-      float out = sqrtf((r + 0.5f) * (r + 0.5f) - dy * dy);
-      float in = r - 0.5f > fabsf(dy) ? sqrtf((r - 0.5f) * (r - 0.5f) - dy * dy) : -1;
-      int xa = ceilf(cx - out - 0.5f), xb = floorf(cx + out - 0.5f);
-      int sa = in < 0 ? 1 : ceilf(cx - in - 0.5f), sb = in < 0 ? 0 : floorf(cx + in - 0.5f);
-      float hs = hole - 1 > fabsf(dy) ? sqrtf((hole - 1) * (hole - 1) - dy * dy) : -1;
-      int ha = hs < 0 ? -1 : ceilf(cx - hs - 0.5f), hb = hs < 0 ? -2 : floorf(cx + hs - 0.5f);
-      int32_t kf = fx((xa + 0.5f - cx + dy) * g + 16), step = fx(g);
-      for (int x = xa; x <= xb; x++, kf += step) {
+      int32_t dy8 = y * 256 + 128 - cy8, dy2 = dy8 * dy8;
+      if (dy2 >= out2) continue;
+      int32_t out = isqrt(out2 - dy2), in = dy2 < in2 ? isqrt(in2 - dy2) : -1, hs = dy2 < hole2 ? isqrt(hole2 - dy2) : -1;
+      // Pixel x is inside a half-span h when |x*256 + 128 - cx8| <= h.
+      int xa = (cx8 - out - 128 + 255) >> 8, xb = (cx8 + out - 128) >> 8;
+      int sa = in < 0 ? 1 : (cx8 - in - 128 + 255) >> 8, sb = in < 0 ? 0 : (cx8 + in - 128) >> 8;
+      int ha = hs < 0 ? -1 : (cx8 - hs - 128 + 255) >> 8, hb = hs < 0 ? -2 : (cx8 + hs - 128) >> 8;
+      int32_t kf = (((int64_t)(xa * 256 + 128 - cx8 + dy8) * g) >> 8) + (16 << 16);
+      for (int x = xa; x <= xb; x++, kf += g) {
         if (x == ha && ha <= hb) {  // jump over the hole
-          kf += step * (hb - ha), x = hb;
+          kf += g * (hb - ha), x = hb;
           continue;
         }
         int k = 32;
         if (x < sa || x > sb) {  // edge pixel: |p| - r ~= (|p|^2 - r^2) / 2r, no sqrt needed
-          float dx = x + 0.5f - cx;
-          k = cover((dx * dx + dy * dy - r * r) * inv2r);
+          int32_t dx8 = x * 256 + 128 - cx8;
+          k = coverFx(((int64_t)(dx8 * dx8 + dy2 - r2) * inv2r) >> 16);
         }
         plot(x, y, k, c0 == c1 ? c0 : mix(c0, c1, constrain(kf >> 16, 0, 32)));
       }
@@ -90,6 +107,7 @@ struct Smooth {
       area += p[2 * i] * p[2 * j + 1] - p[2 * j] * p[2 * i + 1];
       lo = min(lo, p[2 * i + 1]), hi = max(hi, p[2 * i + 1]), l = min(l, p[2 * i]), rr = max(rr, p[2 * i]);
     }
+    if (skip(lo - 1, hi + 1)) return;
     float s = area > 0 ? 1 : -1, nx[8], ny[8], nc[8];
     for (int i = 0; i < n; i++) {  // outward unit normals: distance d = nx*x + ny*y + nc
       int j = (i + 1) % n;
@@ -119,7 +137,10 @@ struct Smooth {
 
   // Ellipse rotated by deg (approximate distance, fine for small shapes like leaves).
   void ellipse(float cx, float cy, float rx, float ry, float deg, uint16_t c) {
-    float s = sinf(deg * DEG_TO_RAD), co = cosf(deg * DEG_TO_RAD), R = max(rx, ry) + 1, m = min(rx, ry);
+    float R = max(rx, ry) + 1;
+    if (skip(cy - R, cy + R)) return;
+    float s = sinf(deg * DEG_TO_RAD), co = cosf(deg * DEG_TO_RAD), m = min(rx, ry);
+    int64_t mFx = fx(m);
     int64_t qin = (int64_t)fx((1 - 0.5f / m) * (1 - 0.5f / m)), qout = (int64_t)fx((1 + 0.5f / m) * (1 + 0.5f / m));
     int32_t dux = fx(co / rx), dvx = fx(-s / ry);
     int xa = floorf(cx - R), xb = ceilf(cx + R);
@@ -129,25 +150,33 @@ struct Smooth {
       for (int x = xa; x <= xb; x++, u += dux, v += dvx) {
         int64_t q = ((int64_t)u * u + (int64_t)v * v) >> 16;
         if (q >= qout) continue;
-        plot(x, y, q <= qin ? 32 : cover((sqrtf(q / 65536.0f) - 1) * m), c);
+        if (q <= qin) {
+          plot(x, y, 32, c);
+          continue;
+        }
+        int64_t e = q - 65536, root = (e >> 1) - ((e * e) >> 19);  // sqrt(1 + e) - 1 ~= e/2 - e^2/8, 16.16
+        plot(x, y, coverFx((root * mFx) >> 16), c);
       }
     }
   }
 
   // Rounded rectangle w x h with corner radius rad, centred on (cx, cy), rotated by deg.
   void rrect(float cx, float cy, float w, float h, float rad, float deg, uint16_t c) {
-    float s = sinf(deg * DEG_TO_RAD), co = cosf(deg * DEG_TO_RAD), R = hypotf(w, h) / 2 + 1;
+    if (skip(cy - (w + h) / 2 - 1, cy + (w + h) / 2 + 1)) return;  // loose bound before any trig
+    float s = sinf(deg * DEG_TO_RAD), co = cosf(deg * DEG_TO_RAD);
+    float Rx = fabsf(w / 2 * co) + fabsf(h / 2 * s) + 1, Ry = fabsf(w / 2 * s) + fabsf(h / 2 * co) + 1;
     int32_t ex = fx(w / 2 - rad), ey = fx(h / 2 - rad), fr = fx(rad);  // straight-edge half extents
     int32_t dux = fx(co), dvx = fx(-s);
-    int xa = floorf(cx - R), xb = ceilf(cx + R);
-    for (int y = rowLo(cy - R); y < rowHi(cy + R); y++) {
+    int xa = floorf(cx - Rx), xb = ceilf(cx + Rx);
+    for (int y = rowLo(cy - Ry); y < rowHi(cy + Ry); y++) {
       float dx = xa + 0.5f - cx, dy = y + 0.5f - cy;
       int32_t u = fx(dx * co + dy * s), v = fx(-dx * s + dy * co);  // pixel in the rectangle's own axes
       for (int x = xa; x <= xb; x++, u += dux, v += dvx) {
         int32_t qx = abs(u) - ex, qy = abs(v) - ey;
         if (qx > fr + 65536 || qy > fr + 65536) continue;
-        if (qx > 0 && qy > 0) {  // corner: distance to the rounding circle
-          plot(x, y, cover(hypotf(qx / 65536.0f, qy / 65536.0f) - rad), c);
+        if (qx > 0 && qy > 0) {  // corner: distance to the rounding circle, integer sqrt in 8.8
+          int32_t qx8 = qx >> 8, qy8 = qy >> 8;
+          plot(x, y, coverFx(((int32_t)isqrt(qx8 * qx8 + qy8 * qy8) << 8) - fr), c);
         } else {
           plot(x, y, coverFx(max(qx, qy) - fr), c);
         }
@@ -158,22 +187,30 @@ struct Smooth {
   // Ring stroke of the given width between angles a0 < a1, less than 180 degrees apart
   // (degrees, 0 = right, 90 = down).
   void arc(float cx, float cy, float r, float width, float a0, float a1, uint16_t c) {
-    float lo = 1e9f, hi = -1e9f, l = 1e9f, rr = -1e9f, R = r + width / 2 + 1;
-    for (float a = a0;; a = min(a + 5, a1)) {  // bounding box of the swept band
-      for (float rad = R - width - 2; rad <= R; rad += width + 2) {
-        float x = cx + rad * cosf(a * DEG_TO_RAD), y = cy + rad * sinf(a * DEG_TO_RAD);
-        lo = min(lo, y), hi = max(hi, y), l = min(l, x), rr = max(rr, x);
-      }
-      if (a >= a1) break;
-    }
+    float R = r + width / 2 + 1, Ri = max(0.0f, r - width / 2 - 1);
+    if (skip(cy - R, cy + R)) return;
     float s0 = sinf(a0 * DEG_TO_RAD), c0 = cosf(a0 * DEG_TO_RAD), s1 = sinf(a1 * DEG_TO_RAD), c1 = cosf(a1 * DEG_TO_RAD);
+    // Bounding box: both ends at both radii, plus the outer extreme of any axis the arc crosses.
+    float lo = cy + min(min(Ri * s0, R * s0), min(Ri * s1, R * s1)), hi = cy + max(max(Ri * s0, R * s0), max(Ri * s1, R * s1));
+    float l = cx + min(min(Ri * c0, R * c0), min(Ri * c1, R * c1)), rr = cx + max(max(Ri * c0, R * c0), max(Ri * c1, R * c1));
+    for (int q = -180; q <= 180; q += 90)
+      if (q > a0 && q < a1) {
+        if (q == 0) rr = cx + R;
+        if (q == 90) hi = cy + R;
+        if (q == -180 || q == 180) l = cx - R;
+        if (q == -90) lo = cy - R;
+      }
+    if (skip(lo, hi)) return;
     // Squared-distance limits of the band in doubled pixel units, so most of the box is rejected with ints.
     int32_t in = max(0.0f, 2 * (r - width / 2) - 1), out = 2 * (r + width / 2) + 1, cx2 = lroundf(2 * cx), cy2 = lroundf(2 * cy);
     int32_t fin = 2 * (r - width / 2) + 1, fout = max(0.0f, 2 * (r + width / 2) - 1);  // fully inside between these
     in *= in, out *= out, fin *= fin, fout *= fout;
     // Angle limits as 12-bit fixed-point directions, so the side test is integer too.
     int32_t S0 = s0 * 4096, C0 = c0 * 4096, S1 = s1 * 4096, C1 = c1 * 4096;
+    // Edge distance (|p|^2 - e^2) / 2e for each edge radius e, kept in ints: |p|^2 = D / 4.
     float ri = r - width / 2, ro = r + width / 2;
+    int32_t ro4 = lroundf(4 * ro * ro), ri4 = lroundf(4 * ri * ri);
+    int64_t kOut = llroundf(65536.0f * 65536.0f / (8 * ro)), kIn = ri > 0 ? llroundf(65536.0f * 65536.0f / (8 * ri)) : 0;
     for (int y = rowLo(lo); y < rowHi(hi); y++)
       for (int x = floorf(l); x <= ceilf(rr); x++) {
         int32_t X = 2 * x + 1 - cx2, Y = 2 * y + 1 - cy2, D = X * X + Y * Y;
@@ -184,8 +221,8 @@ struct Smooth {
           continue;
         }
         // Edge pixels only: distance to each edge radius e is ~= (|p|^2 - e^2) / 2e near that edge.
-        float q = D / 4.0f;
-        plot(x, y, cover(max((q - ro * ro) / (2 * ro), ri > 0 ? (ri * ri - q) / (2 * ri) : -1e9f)), c);
+        int32_t dOut = ((int64_t)(D - ro4) * kOut) >> 16, dIn = ri > 0 ? ((int64_t)(ri4 - D) * kIn) >> 16 : INT32_MIN;
+        plot(x, y, coverFx(max(dOut, dIn)), c);
       }
   }
 
@@ -197,6 +234,8 @@ struct Smooth {
     int top = 0;  // tallest glyph's top, i.e. cap height for a capitals-only font
     for (int i = 0; i <= f->last - f->first; i++) top = min(top, (int)f->glyph[i].yOffset);
     float ax = g.xAdvance / 2.0f, ay = top / 2.0f;  // anchor: advance centre, cap-height middle
+    float Rb = (fabsf(g.xOffset - ax) + g.width + fabsf(g.yOffset - ay) + g.height) * scale;  // loose bound
+    if (skip(cy - Rb, cy + Rb)) return;
     float s = sinf(deg * DEG_TO_RAD), co = cosf(deg * DEG_TO_RAD);
 
     float lo = 1e9f, hi = -1e9f, l = 1e9f, rr = -1e9f;  // screen box of the rotated glyph box
@@ -260,7 +299,7 @@ struct Smooth {
 typedef void (*SceneFn)(Smooth &s);
 
 inline void smoothDraw(Arduino_GFX *gfx, SceneFn scene) {
-  static Smooth s;  // 19 KB, static so it isn't on the stack
+  static Smooth s;  // 38 KB, static so it isn't on the stack
   for (s.y0 = 0; s.y0 < 240; s.y0 += Smooth::STRIP) {
     s.clip(0);
     scene(s);

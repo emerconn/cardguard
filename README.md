@@ -45,6 +45,10 @@ Target: **~20 designs**, each a crisp digital (vector-style) design, not a photo
 | 2026-11-16 | **Chosen: renderer** (`src/smooth.h`), merged to main; SVG kept on `option/svg` | Best looks, designs are code, 258 ms is fast enough |
 | 2026-11-16 | Renderer inner loops are integer / fixed point | No FPU: soft-float per pixel took ~10 s, now 258 ms |
 | 2026-11-16 | BOOT: short press = next design (on release), hold 2 s = sleep; light sleep, not deep | Only GPIO0-5 can wake the C3 from deep sleep; BOOT is GPIO9. RST is hard-wired reset, not readable |
+| 2026-11-16 | Renderer: 3 strips of 80 rows, shapes skip strips before setup maths, integer sqrt / edge maths, `-O2` | Designs went from ~420 ms to 112-165 ms with no visible change (renders compared pixel by pixel) |
+| 2026-11-16 | Display SPI at 80 MHz (library default 40) | Halves the 30 ms push; checked on the real panel |
+| 2026-11-16 | `Serial.setTxTimeoutMs(0)` | With no serial monitor open, each print blocked ~2 s once the USB buffer filled, freezing the button |
+| 2026-11-16 | Shared `TextStyle`s in `guards.cpp`; serif only at large sizes | Small serif text rendered blurry; one set of fonts and sizes keeps designs consistent |
 
 ### Renderer vs SVG (renderer chosen)
 
@@ -52,5 +56,5 @@ Target: **~20 designs**, each a crisp digital (vector-style) design, not a photo
 |---|---|---|
 | How | Designs are code; `src/smooth.h` anti-aliases shapes and rotated text on the chip | Designs are SVG; rendered on the PC, stored palette + RLE (~20 KB each) |
 | Looks | Best | Very good |
-| Draw time | 258 ms (was ~10 s before fixed-point rewrite) | Instant (~30 ms) |
+| Draw time | 112-165 ms (was ~10 s before fixed-point rewrite) | Instant (~30 ms) |
 | Next | Further speedup possible (integer row maths), or pre-render its output on the PC | Kept on GitHub as a fallback |

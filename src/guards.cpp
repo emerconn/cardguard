@@ -11,6 +11,27 @@ static const uint16_t GREEN_D = RGB565(29, 107, 42);
 static const uint16_t INK = RGB565(18, 18, 18);
 static const uint16_t PAPER = RGB565(250, 250, 250);
 
+// Text styles shared by every design, so lettering looks the same across guards. The serif is
+// only used large enough for its thin strokes to stay sharp; everything small is the bold sans.
+struct TextStyle {
+  const GFXfont *font;
+  float scale, spacing;  // spacing: extra px between letters on ring text
+};
+static const TextStyle BAND = {&TitleFont4x, 0.25f, 2.5f};       // ring and banner text
+static const TextStyle BAND_LONG = {&TitleFont4x, 0.2f, 1.5f};   // ring text too long for BAND
+static const TextStyle HEADLINE = {&PokerFont4x, 0.25f, 0};      // big centre word
+static const TextStyle LABEL = {&PokerFont4x, 0.16f, 0};         // centre captions
+static const TextStyle CARD_INDEX = {&TitleFont4x, 0.13f, 0};    // corner rank on court cards
+static const TextStyle CARD_RANK = {&TitleFont4x, 0.3f, 0};      // big rank on number cards
+
+static void text(Smooth &s, const TextStyle &t, const char *str, float x, float y, uint16_t c) {
+  s.text(t.font, t.scale, str, x, y, c);
+}
+// extra: additional letter spacing for designs that space their ring text out.
+static void ringText(Smooth &s, const TextStyle &t, const char *str, float r, bool bottom, uint16_t c, float extra = 0) {
+  s.arcText(t.font, t.scale, str, r, bottom ? 90 : -90, t.spacing + extra, c, bottom);
+}
+
 // Maps shape-local offsets to the screen: centred on (x, y), scaled by k, rotated by deg.
 struct Place {
   float x0, y0, k, co, sn;
@@ -67,14 +88,14 @@ static void chipLeaderScene(Smooth &s) {
 
   s.rect(67, 83, 106, 32, GOLD);
   s.rect(69.5f, 85.5f, 101, 27, RED);
-  s.text(&PokerFont4x, 0.25f, "POKER", 120, 99, GOLD);
+  text(s, HEADLINE, "POKER", 120, 99, GOLD);
 
   spade(s, 84, 66, INK);
   heart(s, 108, 66, RED);
   club(s, 132, 66, INK);
   diamond(s, 156, 66, RED);
 
-  s.arcText(&TitleFont4x, 0.25f, "THE CHIP LEADER", 97, -90, 2.5f, GOLD);
+  ringText(s, BAND, "THE CHIP LEADER", 97, false, GOLD);
 
   // Laurel branches around the bottom, gold spade at the base.
   for (int side = 1; side >= -1; side -= 2) {
@@ -118,7 +139,8 @@ static void duck(Smooth &s, float x, float y, float k) {
 
 // Shared frame: gold rim, cream band with suits down each side, black banners carrying top and
 // bottom text, gold rope ring, black centre (radius 73) for the design's own art.
-static void bannerFrame(Smooth &s, const GFXfont *f, float scale, const char *top, const char *bottom) {
+static void bannerFrame(Smooth &s, const TextStyle &topStyle, const char *top, const TextStyle &bottomStyle,
+                        const char *bottom) {
   s.fill(RGB565_BLACK);
   s.circle(120, 120, 119.5f, GOLD_L, GOLD_D, 112);
   s.circle(120, 120, 112, CREAM, CREAM, 84);
@@ -129,8 +151,8 @@ static void bannerFrame(Smooth &s, const GFXfont *f, float scale, const char *to
     s.arc(120, 120, 98, 30, a0, a1, GOLD);
     s.arc(120, 120, 98, 25, a0 + 1.5f, a1 - 1.5f, INK);
   }
-  s.arcText(f, scale, top, 98, -90, 2.5f, GOLD);
-  s.arcText(f, scale, bottom, 98, 90, 2.5f, GOLD, true);
+  ringText(s, topStyle, top, 98, false, GOLD);
+  ringText(s, bottomStyle, bottom, 98, true, GOLD);
 
   // Suits down each side of the band: club, diamond, spade, heart from top to bottom.
   const float side[] = {-24, -8, 8, 24};
@@ -154,11 +176,11 @@ static void bannerFrame(Smooth &s, const GFXfont *f, float scale, const char *to
 }
 
 static void ducksScene(Smooth &s) {
-  bannerFrame(s, &TitleFont4x, 0.25f, "THE DUCKS", "QUACK QUACK");
-  s.text(&PokerFont4x, 0.14f, "HOLD'EM", 120, 76, GOLD);
+  bannerFrame(s, BAND, "THE DUCKS", BAND, "QUACK QUACK");
+  text(s, LABEL, "HOLD'EM", 120, 76, GOLD);
   duck(s, 92, 121, 1.15f);
   duck(s, 149, 121, 1.15f);
-  s.text(&PokerFont4x, 0.17f, "POCKET 2s", 120, 166, GOLD);
+  text(s, LABEL, "POCKET 2s", 120, 166, GOLD);
 }
 
 static void ducks(Arduino_GFX *gfx) { smoothDraw(gfx, ducksScene); }
@@ -209,13 +231,13 @@ static void courtCard(Smooth &s, float cx, float cy, float deg, char rank, SuitF
 
   // Corner indices: rank over a small suit, top-left and (upside down) bottom-right.
   for (int f = -1; f <= 1; f += 2) {
-    s.glyph(&PokerFont4x, 0.11f, rank, X(19 * f, 26 * f), Y(19 * f, 26 * f), deg + (f > 0 ? 180 : 0), col);
+    s.glyph(CARD_INDEX.font, CARD_INDEX.scale, rank, X(19 * f, 26 * f), Y(19 * f, 26 * f), deg + (f > 0 ? 180 : 0), col);
     suit(s, X(19 * f, 16 * f), Y(19 * f, 16 * f), col, 0.42f, deg + (f > 0 ? 180 : 0));
   }
 }
 
 static void jackKingOffScene(Smooth &s) {
-  bannerFrame(s, &PokerFont4x, 0.145f, "I LOVE", "JACK KING OFF");
+  bannerFrame(s, BAND, "I LOVE", BAND_LONG, "JACK KING OFF");
   courtCard(s, 99, 122, -10, 'J', spade, INK);
   courtCard(s, 141, 118, 8, 'K', heart, RED);
 }
@@ -244,7 +266,7 @@ static void pipCard(Smooth &s, float cx, float cy, float deg, char rank, int cor
   s.rrect(cx, cy, 58.5f, 80.5f, 5, deg, CARD_EDGE);
   s.rrect(cx, cy, 56, 78, 4, deg, PAPER);
   float x = corner * 18;  // 4 px padding from the card edge to the 12 px wide rank, suit centred under it
-  s.glyph(&TitleFont4x, 0.3f, rank, p.x(x, -27), p.y(x, -27), deg, col);
+  s.glyph(CARD_RANK.font, CARD_RANK.scale, rank, p.x(x, -27), p.y(x, -27), deg, col);
   suit(s, p.x(x, -8), p.y(x, -8), col, 0.95f, deg);
 }
 
@@ -306,8 +328,8 @@ static void donkScene(Smooth &s) {
   }
   s.circle(120, 120, 81, GOLD_L, GOLD);
 
-  s.arcText(&TitleFont4x, 0.27f, "I'M A DONK", 99, -90, 7, GOLD);
-  s.arcText(&TitleFont4x, 0.18f, "SEVEN AND TWO OFFSUIT", 99, 90, 1.5f, GOLD, true);
+  ringText(s, BAND, "I'M A DONK", 99, false, GOLD, 5);  // spaced out like the original
+  ringText(s, BAND_LONG, "SEVEN AND TWO OFFSUIT", 99, true, GOLD);
   const float side[] = {-30, -15, 0, 15};
   for (int i = 0; i < 4; i++)
     for (int left = 0; left < 2; left++) {
