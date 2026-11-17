@@ -1,14 +1,8 @@
 #include "guards.h"
+#include "chip_leader_img.h"  // generated from assets/chip_leader.png by tools/img2h.py
 
 static void chipLeader(Arduino_GFX *gfx) {
-  gfx->fillScreen(RGB565_BLACK);
-  gfx->drawCircle(120, 120, 115, RGB565_YELLOW);
-  gfx->drawCircle(120, 120, 112, RGB565_YELLOW);
-  gfx->setTextColor(RGB565_YELLOW);
-  gfx->setTextSize(3);
-  gfx->setCursor(30, 105);
-  gfx->print("CHIP LEADER");
-  // TODO: real artwork (crown, chip stack).
+  gfx->draw16bitRGBBitmap(0, 0, chip_leader_img, 240, 240);
 }
 
 const GuardFn GUARDS[] = {chipLeader};
