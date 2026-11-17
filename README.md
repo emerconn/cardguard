@@ -33,6 +33,7 @@ Target: **~20 designs**, each a crisp digital (vector-style) design, not a photo
 | 2026-11-16 | Images stored as 256-colour palette (58 KB) not raw RGB565 (115 KB) | 20 designs must fit in flash |
 | 2026-11-16 | **Dropped**: drawing with Arduino_GFX shapes | No anti-aliasing (jagged), letters can't rotate along the curve |
 | 2026-11-16 | Candidates: `option/renderer` and `option/svg` branches | See below |
+| 2026-11-16 | Renderer inner loops are integer / fixed point | No FPU: soft-float per pixel took ~10 s, now 258 ms |
 
 ### Open: renderer vs SVG
 
@@ -40,5 +41,5 @@ Target: **~20 designs**, each a crisp digital (vector-style) design, not a photo
 |---|---|---|
 | How | Designs are code; `src/smooth.h` anti-aliases shapes and rotated text on the chip | Designs are SVG; rendered on the PC, stored palette + RLE (~20 KB each) |
 | Looks | Best | Very good |
-| Draw time | ~10 s (soft float, no FPU): too slow as-is | Instant |
-| Next | Speed it up (fixed-point, tighter bounding boxes), or pre-render its output on the PC | Tune the SVG design to match the renderer's |
+| Draw time | 258 ms (was ~10 s before fixed-point rewrite) | Instant (~30 ms) |
+| Next | Further speedup possible (integer row maths), or pre-render its output on the PC | Kept on GitHub as a fallback |
