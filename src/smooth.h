@@ -134,6 +134,27 @@ struct Smooth {
     }
   }
 
+  // Rounded rectangle w x h with corner radius rad, centred on (cx, cy), rotated by deg.
+  void rrect(float cx, float cy, float w, float h, float rad, float deg, uint16_t c) {
+    float s = sinf(deg * DEG_TO_RAD), co = cosf(deg * DEG_TO_RAD), R = hypotf(w, h) / 2 + 1;
+    int32_t ex = fx(w / 2 - rad), ey = fx(h / 2 - rad), fr = fx(rad);  // straight-edge half extents
+    int32_t dux = fx(co), dvx = fx(-s);
+    int xa = floorf(cx - R), xb = ceilf(cx + R);
+    for (int y = rowLo(cy - R); y < rowHi(cy + R); y++) {
+      float dx = xa + 0.5f - cx, dy = y + 0.5f - cy;
+      int32_t u = fx(dx * co + dy * s), v = fx(-dx * s + dy * co);  // pixel in the rectangle's own axes
+      for (int x = xa; x <= xb; x++, u += dux, v += dvx) {
+        int32_t qx = abs(u) - ex, qy = abs(v) - ey;
+        if (qx > fr + 65536 || qy > fr + 65536) continue;
+        if (qx > 0 && qy > 0) {  // corner: distance to the rounding circle
+          plot(x, y, cover(hypotf(qx / 65536.0f, qy / 65536.0f) - rad), c);
+        } else {
+          plot(x, y, coverFx(max(qx, qy) - fr), c);
+        }
+      }
+    }
+  }
+
   // Ring stroke of the given width between angles a0 < a1, less than 180 degrees apart
   // (degrees, 0 = right, 90 = down).
   void arc(float cx, float cy, float r, float width, float a0, float a1, uint16_t c) {

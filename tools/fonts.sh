@@ -9,5 +9,5 @@ F=/usr/share/fonts/liberation
   echo '#include <Arduino_GFX.h>'
   echo
   python3 tools/ttf2gfx.py $F/LiberationSans-Bold.ttf 72 TitleFont4x " THECIPLADRUKQS"
-  python3 tools/ttf2gfx.py $F/LiberationSerif-Bold.ttf 108 PokerFont4x " POKERHLD'EMCT2s"
+  python3 tools/ttf2gfx.py $F/LiberationSerif-Bold.ttf 108 PokerFont4x " POKERHLD'EMCT2sIVJANGF"
 } > src/fonts.h

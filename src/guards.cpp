@@ -11,27 +11,27 @@ static const uint16_t GREEN_D = RGB565(29, 107, 42);
 static const uint16_t INK = RGB565(18, 18, 18);
 static const uint16_t PAPER = RGB565(250, 250, 250);
 
-// Card suits about 18px tall, centred on (x, y).
-static void spade(Smooth &s, float x, float y, uint16_t c) {
-  s.tri(x - 7.6f, y + 0.5f, x + 7.6f, y + 0.5f, x, y - 9, c);
-  s.circle(x - 4, y + 2, 4.2f, c);
-  s.circle(x + 4, y + 2, 4.2f, c);
-  s.tri(x, y + 2, x - 3, y + 9, x + 3, y + 9, c);
+// Card suits about 18px tall times k, centred on (x, y).
+static void spade(Smooth &s, float x, float y, uint16_t c, float k = 1) {
+  s.tri(x - 7.6f * k, y + 0.5f * k, x + 7.6f * k, y + 0.5f * k, x, y - 9 * k, c);
+  s.circle(x - 4 * k, y + 2 * k, 4.2f * k, c);
+  s.circle(x + 4 * k, y + 2 * k, 4.2f * k, c);
+  s.tri(x, y + 2 * k, x - 3 * k, y + 9 * k, x + 3 * k, y + 9 * k, c);
 }
-static void heart(Smooth &s, float x, float y, uint16_t c) {
-  s.circle(x - 4.2f, y - 3.5f, 4.8f, c);
-  s.circle(x + 4.2f, y - 3.5f, 4.8f, c);
-  s.tri(x - 8.8f, y - 2, x + 8.8f, y - 2, x, y + 8.5f, c);
+static void heart(Smooth &s, float x, float y, uint16_t c, float k = 1) {
+  s.circle(x - 4.2f * k, y - 3.5f * k, 4.8f * k, c);
+  s.circle(x + 4.2f * k, y - 3.5f * k, 4.8f * k, c);
+  s.tri(x - 8.8f * k, y - 2 * k, x + 8.8f * k, y - 2 * k, x, y + 8.5f * k, c);
 }
-static void club(Smooth &s, float x, float y, uint16_t c) {
-  s.circle(x, y - 4.5f, 4, c);
-  s.circle(x - 4.6f, y + 1.5f, 4, c);
-  s.circle(x + 4.6f, y + 1.5f, 4, c);
-  s.circle(x, y, 2.5f, c);  // fills the gap where the three lobes meet
-  s.tri(x, y, x - 3, y + 9, x + 3, y + 9, c);
+static void club(Smooth &s, float x, float y, uint16_t c, float k = 1) {
+  s.circle(x, y - 4.5f * k, 4 * k, c);
+  s.circle(x - 4.6f * k, y + 1.5f * k, 4 * k, c);
+  s.circle(x + 4.6f * k, y + 1.5f * k, 4 * k, c);
+  s.circle(x, y, 2.5f * k, c);  // fills the gap where the three lobes meet
+  s.tri(x, y, x - 3 * k, y + 9 * k, x + 3 * k, y + 9 * k, c);
 }
-static void diamond(Smooth &s, float x, float y, uint16_t c) {
-  float p[] = {x, y - 9, x + 7, y, x, y + 9, x - 7, y};
+static void diamond(Smooth &s, float x, float y, uint16_t c, float k = 1) {
+  float p[] = {x, y - 9 * k, x + 7 * k, y, x, y + 9 * k, x - 7 * k, y};
   s.poly(p, 4, c);
 }
 
@@ -104,19 +104,21 @@ static void duck(Smooth &s, float x, float y, float k) {
   s.circle(x - 11 * k, y - 14 * k, 1.5f * k, INK);
 }
 
-static void ducksScene(Smooth &s) {
+// Shared frame: gold rim, cream band with suits down each side, black banners carrying top and
+// bottom text, gold rope ring, black centre (radius 73) for the design's own art.
+static void bannerFrame(Smooth &s, const GFXfont *f, float scale, const char *top, const char *bottom) {
   s.fill(RGB565_BLACK);
   s.circle(120, 120, 119.5f, GOLD_L, GOLD_D, 112);
   s.circle(120, 120, 112, CREAM, CREAM, 84);
 
   // Black banners with gold edges across the top and bottom of the band.
-  for (int bottom = 0; bottom < 2; bottom++) {
-    float a0 = bottom ? 38 : -142, a1 = bottom ? 142 : -38;
+  for (int b = 0; b < 2; b++) {
+    float a0 = b ? 38 : -142, a1 = b ? 142 : -38;
     s.arc(120, 120, 98, 30, a0, a1, GOLD);
     s.arc(120, 120, 98, 25, a0 + 1.5f, a1 - 1.5f, INK);
   }
-  s.arcText(&TitleFont4x, 0.25f, "THE DUCKS", 98, -90, 2.5f, GOLD);
-  s.arcText(&TitleFont4x, 0.25f, "QUACK QUACK", 98, 90, 2.5f, GOLD, true);
+  s.arcText(f, scale, top, 98, -90, 2.5f, GOLD);
+  s.arcText(f, scale, bottom, 98, 90, 2.5f, GOLD, true);
 
   // Suits down each side of the band: club, diamond, spade, heart from top to bottom.
   const float side[] = {-24, -8, 8, 24};
@@ -137,7 +139,10 @@ static void ducksScene(Smooth &s) {
     s.ellipse(120 + 77 * cosf(t), 120 + 77 * sinf(t), 4.2f, 1.9f, a + 90 + 50, GOLD_L);
   }
   s.circle(120, 120, 73, INK);
+}
 
+static void ducksScene(Smooth &s) {
+  bannerFrame(s, &TitleFont4x, 0.25f, "THE DUCKS", "QUACK QUACK");
   s.text(&PokerFont4x, 0.14f, "HOLD'EM", 120, 76, GOLD);
   duck(s, 92, 121, 1.15f);
   duck(s, 149, 121, 1.15f);
@@ -146,5 +151,64 @@ static void ducksScene(Smooth &s) {
 
 static void ducks(Arduino_GFX *gfx) { smoothDraw(gfx, ducksScene); }
 
-const GuardFn GUARDS[] = {chipLeader, ducks};
+static const uint16_t SKIN = RGB565(248, 214, 170);
+static const uint16_t HAIR = RGB565(140, 84, 36);
+static const uint16_t CARD_EDGE = RGB565(110, 110, 110);
+
+typedef void (*SuitFn)(Smooth &, float, float, uint16_t, float);
+
+// A 50 x 70 court card centred on (cx, cy), rotated by deg: corner indices plus a simple
+// king (crown, beard) or jack (feathered hat) figure in a frame of the suit's colour.
+static void courtCard(Smooth &s, float cx, float cy, float deg, char rank, SuitFn suit, uint16_t col) {
+  float sn = sinf(deg * DEG_TO_RAD), co = cosf(deg * DEG_TO_RAD);
+  auto X = [&](float lx, float ly) { return cx + lx * co - ly * sn; };  // card space -> screen
+  auto Y = [&](float lx, float ly) { return cy + lx * sn + ly * co; };
+  auto quad = [&](float x0, float y0, float x1, float y1, float x2, float y2, float x3, float y3, uint16_t c) {
+    float p[] = {X(x0, y0), Y(x0, y0), X(x1, y1), Y(x1, y1), X(x2, y2), Y(x2, y2), X(x3, y3), Y(x3, y3)};
+    s.poly(p, 4, c);
+  };
+  auto tri = [&](float x0, float y0, float x1, float y1, float x2, float y2, uint16_t c) {
+    s.tri(X(x0, y0), Y(x0, y0), X(x1, y1), Y(x1, y1), X(x2, y2), Y(x2, y2), c);
+  };
+
+  s.rrect(cx, cy, 52.5f, 72.5f, 5, deg, CARD_EDGE);
+  s.rrect(cx, cy, 50, 70, 4, deg, PAPER);
+  s.rrect(cx, cy, 31, 47, 2, deg, col);  // figure frame
+  s.rrect(cx, cy, 28, 44, 1.5f, deg, PAPER);
+
+  quad(-11, 21, 11, 21, 8, 4, -8, 4, col);  // robe with a gold sash
+  quad(-2.5f, 21, 2.5f, 21, 1.5f, 4, -1.5f, 4, GOLD);
+  if (rank == 'K') {
+    s.circle(X(0, -1), Y(0, -1), 5.5f, HAIR);  // beard
+    s.circle(X(0, -5), Y(0, -5), 5.5f, SKIN);
+    quad(-6, -9, 6, -9, 6, -12.5f, -6, -12.5f, GOLD);  // crown
+    tri(-6, -12.5f, -2, -12.5f, -5.5f, -18.5f, GOLD);
+    tri(-2, -12.5f, 2, -12.5f, 0, -19.5f, GOLD);
+    tri(2, -12.5f, 6, -12.5f, 5.5f, -18.5f, GOLD);
+  } else {
+    s.circle(X(-5, -6), Y(-5, -6), 2.6f, HAIR);
+    s.circle(X(5, -6), Y(5, -6), 2.6f, HAIR);
+    s.circle(X(0, -5), Y(0, -5), 5.5f, SKIN);
+    s.ellipse(X(0, -11), Y(0, -11), 8, 3.4f, deg, RED);  // hat with a feather
+    tri(3, -12, 10, -20, 7, -10.5f, GOLD);
+  }
+  s.circle(X(-2, -5.5f), Y(-2, -5.5f), 0.9f, INK);  // eyes
+  s.circle(X(2, -5.5f), Y(2, -5.5f), 0.9f, INK);
+
+  // Corner indices: rank over a small suit, top-left and (upside down) bottom-right.
+  for (int f = -1; f <= 1; f += 2) {
+    s.glyph(&PokerFont4x, 0.11f, rank, X(19 * f, 26 * f), Y(19 * f, 26 * f), deg + (f > 0 ? 180 : 0), col);
+    suit(s, X(19 * f, 16 * f), Y(19 * f, 16 * f), col, 0.42f);
+  }
+}
+
+static void jackKingOffScene(Smooth &s) {
+  bannerFrame(s, &PokerFont4x, 0.145f, "I LOVE", "JACK KING OFF");
+  courtCard(s, 99, 122, -10, 'J', spade, INK);
+  courtCard(s, 141, 118, 8, 'K', heart, RED);
+}
+
+static void jackKingOff(Arduino_GFX *gfx) { smoothDraw(gfx, jackKingOffScene); }
+
+const GuardFn GUARDS[] = {chipLeader, ducks, jackKingOff};
 const int GUARD_COUNT = sizeof(GUARDS) / sizeof(GUARDS[0]);
