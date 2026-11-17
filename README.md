@@ -19,7 +19,8 @@ pio run -t upload -t monitor   # all of the above in one go
 - The monitor shows `guard N drawn in X ms` after each redraw. Typing `n` steps to the next design.
 - If upload can't connect, hold BOOT and tap RST (or hold BOOT while plugging in), then upload.
 
-Pins are in `src/main.cpp` (vendor pinout, RST not wired).
+Pins are in `src/main.cpp` (vendor pinout, RST not wired). Board specs, pinout, dimensions and sources:
+[`docs/hardware.md`](docs/hardware.md).
 
 Preview every guard on the PC, using the real Arduino_GFX drawing code:
 
