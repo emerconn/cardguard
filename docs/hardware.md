@@ -91,6 +91,7 @@ From the datasheet's "Product Size" drawing [DS] (front view, mm):
 | Mounting holes | none shown or mentioned | [DS], [CNX] |
 | REST / BOOT buttons | TS-4.2x3.2x2.5 tact switches: body 4.2 x 3.2 mm, 2.5 mm tall | [SCH] |
 | ESP32-C3-MINI-1U module (back) | 13.2 x 12.5 x 2.4 mm | ESP32-C3-MINI-1 datasheet in the vendor package |
+| Battery connector | JST 1.25 mm 2-pin, 90° SMT (PicoBlade-style), flat at ~45°, opening faces the board centre and is open on top, pins on the centre side (observed). Typical clone CJT A1251WR-S-2P: 7.75 overall with solder tabs, body 4.70 deep, **3.20 tall**. Measured total (1a - 1b) gives 4.5 above the PCB back: **unresolved**, check with a depth rod | [CJT](https://static.chipdip.ru/lib/862/DOC012862213.pdf), observed |
 
 Back side (components side), from the datasheet's labelled render [DS], USB tab at the bottom:
 
@@ -120,7 +121,7 @@ the tab centred), so treat these as **±1-2 mm** until measured. Back view, from
 | Power switch lever (side edge) | +17.4 (edge) | -1.5 |
 | SH1.0-4P header | -12.6 | +9.7 |
 | JST1.25 battery | +12.2 | +8.1 |
-| USB-C | 0 (centred on tab, per [DS]) | +15.5 |
+| USB-C | +2.7: not centred, shell flush with the tab's +x side edge and its end (back render; 14.23 tab - 8.8 shell) | +15.5 |
 
 ## Measured (calipers, our board)
 
