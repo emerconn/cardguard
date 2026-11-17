@@ -64,7 +64,11 @@ step_w = 0.8;           // stepped rim: ledge cut into the shell wall's top edge
 step_h = 0.8;           // (holds the lid up all round, so pressing near an edge can't tip it)
 fit = 0.05;             // lid edge to shell wall, each side (0.1 printed loose; raise if too tight to push in)
 press_gap = 0.2;        // lid posts to the module / USB tops (0 = touching; 0.1 rocked slightly on the posts)
-btn_hole_extra = 0.6;   // button hole over the plunger, total
+btn_hole_extra = 0.6;   // REST pin hole over the plunger, total
+flex = [8, 5];          // BOOT flex tab: tongue length (radial, hinged at the centre end; under ~7 PLA may crack) x width
+flex_t = 1.0;           // tongue thickness (thinner = softer press)
+flex_slot = 0.6;        // cut round the tongue
+flex_gap = 0.2;         // peg tip to the BOOT plunger
 plug = [11, 6.6];       // USB opening, sized for a plug overmold so most cables seat fully;
                         // wider cuts through the case corner, since the port is off-centre
 plug_r = 1.5;
@@ -117,7 +121,21 @@ module shell() {
   }
 }
 
+// BOOT flex tab: tongue pointing out from the centre through the button (BOOT is ~3 from the rim, so a
+// tongue along x would cut through the edge), free end 1 past the button
+btn_r = norm([btn_x, btn_y]);
+module flex_local() { rotate(atan2(btn_y, btn_x)) children(); }
+module flex_tongue() { flex_local() translate([btn_r + 1 - flex[0], -flex[1] / 2]) square(flex); }
+module flex_cut() {  // U round the tongue, open at the hinge
+  flex_local() difference() {
+    offset(delta = flex_slot) translate([btn_r + 1 - flex[0], -flex[1] / 2]) square(flex);
+    translate([btn_r + 1 - flex[0] - flex_slot - 0.01, -flex[1] / 2]) square([flex[0] + flex_slot + 0.02, flex[1]]);
+  }
+}
+
 module lid() {
+  // peg under the tongue presses BOOT
+  translate([btn_x, btn_y, z_btn_top + flex_gap]) cylinder(h = z_top - flex_t - z_btn_top - flex_gap + 0.01, d = 2, $fn = 48);
   difference() {
     union() {
       translate([0, 0, z_lid]) linear_extrude(lid_t) offset(delta = -fit) pocket_outline();
@@ -126,8 +144,9 @@ module lid() {
       translate([module_xy[0], module_xy[1], z_module_top + press_gap]) cylinder(h = z_lid - z_module_top - press_gap + 0.01, d = 4);
       translate([usb_x - 3, -tab_end + 1, z_usb_top + press_gap]) cube([6, 3, z_lid - z_usb_top - press_gap + 0.01]);
     }
-    for (s = [-1, 1])
-      translate([s * btn_x, btn_y, z_lid - 1]) linear_extrude(lid_t + 2) oval(plunger + [1, 1] * btn_hole_extra);
+    translate([-btn_x, btn_y, z_lid - 1]) linear_extrude(lid_t + 2) oval(plunger + [1, 1] * btn_hole_extra);  // REST pin hole
+    translate([0, 0, z_lid - 1]) linear_extrude(lid_t + 2) flex_cut();
+    translate([0, 0, z_lid - 1]) linear_extrude(z_top - flex_t - z_lid + 1) flex_tongue();  // thin the tongue from the inside
   }
 }
 

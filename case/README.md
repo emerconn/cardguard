@@ -13,7 +13,8 @@ Needs OpenSCAD 2025+ (Manifold backend, renders in seconds). Arch: `omarchy pkg 
   (switch covered in v1, no battery yet).
 - **Lid**: friction-fits into the back; a flange round its edge rests on a stepped ledge in the shell rim, so it
   cannot tip in when pressed near the edge. Two posts press the board onto the front lip via the ESP32 module can and the
-  USB shell. Oval pin holes over REST and BOOT. Fingernail notch on the rim opposite the USB tab to pry it off.
+  USB shell. BOOT (the firmware's only button) is a flex tab cut into the lid: a thinned PLA tongue with a peg
+  under its tip, pressed with a finger. REST is an oval pin hole. Fingernail notch on the rim opposite the USB tab to pry it off.
 - Outside: ~40.7 x 42.7 mm, 11.2 mm thick.
 
 ## Build
@@ -44,4 +45,6 @@ openscad -D 'part="section"' -D section_x=12 ...   # 2D slice through x = 12 (BO
 | Lid too tight / falls out | `fit` (0.05 per side; 0.1 was loose on the first print) |
 | Board rattles front-to-back | lower `press_gap` (0.2; 0.1 made the lid rock on the posts) |
 | Lid won't seat (posts hit first) | raise `press_gap` |
-| Pin holes miss the buttons | `btn_x`, `btn_y` |
+| Pin hole / flex peg misses the buttons | `btn_x`, `btn_y` |
+| BOOT tab too stiff / too soft | `flex_t` (1.0) |
+| BOOT tab must be pushed far / clicks by itself | lower / raise `flex_gap` (0.2) |
