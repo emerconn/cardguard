@@ -20,3 +20,5 @@ typedef bool boolean;
 typedef uint8_t byte;
 inline void delay(unsigned long) {}
 inline unsigned long millis() { return 0; }
+#define RAD_TO_DEG 57.295779513082320876798154814105
+#define constrain(x, lo, hi) ((x) < (lo) ? (lo) : (x) > (hi) ? (hi) : (x))

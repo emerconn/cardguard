@@ -16,7 +16,9 @@ int current = 0;
 
 void show(int i) {
   current = (i + GUARD_COUNT) % GUARD_COUNT;
+  unsigned long t = millis();
   GUARDS[current](gfx);
+  Serial.printf("guard %d drawn in %lu ms\n", current, millis() - t);
 }
 
 void setup() {
