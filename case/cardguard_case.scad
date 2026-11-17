@@ -84,12 +84,22 @@ screw_block = 4;        // lid block depth (y); an M2 x 6 ends ~0.45 past the nu
                         // 0.2 short of the USB shell
 nut = [4.2, 1.7];       // M2 hex nut pocket: across flats (nut 4.0) x depth (nut 1.6), flat side against the lid plate
 
+// Top latch (opposite the USB end): the shell has a lip reaching inward over the pocket, flush with the back; the
+// lid's edge there is cut back to a chord and only its bottom latch_t carries on under the lip as a tongue. Fit:
+// tilt the lid, tongue under the lip, swing the USB end down (it pivots on the lip's top inner edge), then screw.
+latch_depth = 1.0;      // how far the lip reaches over the tongue (at the centre; a chord, so less towards the sides)
+latch_t = 0.8;          // tongue thickness (the lid plate's bottom layer)
+latch_gap = 0.1;        // tongue top to lip underside
+swing_relief = [0.5, 0.2];  // screw block tapered towards its bottom: end face, angled tab side. It swings towards
+                        // the USB end (up to ~0.5 at its bottom) while the lid closes on the latch
+
 $fn = 128;
 
 z_lid = z_tallest + back_gap;   // lid inner face
 z_top = z_lid + lid_t;          // shell back rim = lid outer face
 usb_z = (z_pcb_back + z_usb_top) / 2 + usb_raise;  // USB opening centre
 y_end = -(tab_end + fpc_out + clear);  // pocket's inner face at the USB end
+y_latch = pcb_d / 2 + clear - latch_depth;  // lid edge (a chord) under the latch lip; the lid pivots here
 screw_z = z_lid - nut[0] / 2;  // nut pocket's flat flush with the lid plate's inner face
 
 // ---------------------------------------------------------------- 2D outlines
@@ -114,6 +124,11 @@ module rounded_rect(size, r) { offset(r = r) square([size[0] - 2 * r, size[1] - 
 // ---------------------------------------------------------------- parts
 
 module shell() {
+  // latch lip at the top end, flush with the back rim (fills the ledge there too)
+  intersection() {
+    translate([0, 0, z_lid + latch_t + latch_gap]) linear_extrude(z_top - z_lid - latch_t - latch_gap) outer_outline();
+    translate([-50, y_latch + fit, 0]) cube([100, 50, 50]);
+  }
   difference() {
     translate([0, 0, -lip]) linear_extrude(z_top + lip) outer_outline();
     // board pocket, open at the back
@@ -158,10 +173,14 @@ module lid() {
       translate([module_xy[0], module_xy[1], z_module_top + press_gap]) cylinder(h = z_lid - z_module_top - press_gap + 0.01, d = 4);
       // block for the lid screw, against the USB end wall; ends at the nut pocket's flat, so the pocket is open on
       // that side (prints with no bridge, the narrower opening still holds the nut)
-      translate([0, 0, screw_z - nut[0] / 2]) linear_extrude(z_lid - screw_z + nut[0] / 2 + 0.01) intersection() {
-        offset(delta = -fit) pocket_outline();
-        translate([-pcb_d / 2, y_end]) square([usb_x - usb_w / 2 - 0.2 + pcb_d / 2, fit + screw_block]);
-      }
+      // stacked slices tapering in by swing_relief towards the bottom (not hull(): that fills the outline's inside
+      // corner where the tab's angled side starts, which pushed the block into the shell wall)
+      z_blk = screw_z - nut[0] / 2;
+      for (i = [0 : 7]) let(t = 1 - i / 8)  // t = 1 at the bottom
+        translate([0, 0, z_blk + i * (z_lid - z_blk) / 8]) linear_extrude((z_lid - z_blk) / 8 + 0.01) intersection() {
+          offset(delta = -fit - t * swing_relief[1]) pocket_outline();
+          translate([-pcb_d / 2, y_end + t * swing_relief[0]]) square([usb_x - usb_w / 2 - 0.2 + pcb_d / 2, fit + screw_block - t * swing_relief[0]]);
+        }
       translate([usb_x - 3, -tab_end + 1, z_usb_top + usb_press_gap]) cube([6, 3, z_lid - z_usb_top - usb_press_gap + 0.01]);
     }
     translate([screw_x, y_end - 0.01, screw_z]) rotate([-90, 0, 0]) cylinder(h = screw_block + 1, d = screw_d, $fn = 32);
@@ -169,6 +188,8 @@ module lid() {
       cylinder(h = nut[1] + 1, d = nut[0] / cos(30), $fn = 6);  // nut pocket
     translate([0, 0, z_lid - 1]) linear_extrude(lid_t + 2) flex_cut();
     translate([0, 0, z_lid - 1]) linear_extrude(z_top - flex_t - z_lid + 1) flex_tongue();  // thin the tongues from the inside
+    // latch: cut back to the chord above the tongue
+    translate([-50, y_latch, z_lid + latch_t]) cube([100, 50, 10]);
   }
 }
 

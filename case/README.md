@@ -8,7 +8,7 @@ Needs OpenSCAD 2025+ (Manifold backend, renders in seconds). Arch: `omarchy pkg 
 
 ## v1
 
-- **Shell**: front lip over the screen's dead border (opening Ø 33.4 hides glass offset), board drops in from the back.
+- **Shell**: front lip over the screen's dead border (opening Ø 33.4 hides glass offset), board goes in from the back.
   USB opening port-sized (9.2 x 3.0, moved up one layer for bridge sag) around the off-centre port, so no PCB shows; only slim cables seat fully
   (the plug's housing can't enter, the port face is 2.35 behind the case face). Relief slot for the power-switch lever
   (switch covered in v1, no battery yet).
@@ -18,7 +18,18 @@ Needs OpenSCAD 2025+ (Manifold backend, renders in seconds). Arch: `omarchy pkg 
   a peg under its tip, pressed with a finger.
 - **Screw**: one M2 x 6 flat head (countersunk), from outside through the USB end wall left of the port and a
   block on the lid, into an M2 hex nut pressed into a pocket in the block's inner face.
+- **Top latch** (opposite the USB end): a lip on the shell, flush with the back, reaches 1 mm in over the pocket; the
+  lid's edge there is cut back and only its bottom 0.8 mm carries on under the lip as a tongue. With the screw at the
+  USB end, pushing on the screen can't pop the lid out at either end. The screw block is tapered towards its bottom so
+  it clears the end wall while the lid swings shut (collision-checked from 0 to 40 degrees).
 - Outside: ~40.7 x 42.7 mm, 11.2 mm thick.
+
+## Assembly
+
+1. Board: top edge (away from the USB tab) first, under the shell's latch lip, then lower the USB end in.
+2. Nut into the lid block's pocket.
+3. Lid: tilt it ~30-40 degrees, tongue under the latch lip, swing the USB end down until it sits flat.
+4. M2 x 6 flat head through the USB end wall into the nut.
 
 ## Build
 
@@ -48,6 +59,8 @@ openscad -D 'part="section"' -D section_x=12 ...   # 2D slice through x = 12 (BO
 | Lid too tight / falls out | `fit` (0.05 per side; 0.1 was loose on the first print) |
 | Board rattles front-to-back | lower `press_gap` (0.3; 0.1 and 0.2 made the lid sit on the posts), `usb_press_gap` for the USB post alone (0.2) |
 | Lid won't seat (posts hit first) | raise `press_gap` |
+| Latch rattles / tongue won't go under the lip | lower / raise `latch_gap` (0.1) |
+| Lid catches on the USB end while swinging shut | raise `swing_relief` |
 | Nut won't press in / falls out | `nut` across flats (4.2): raise / lower by 0.1 |
 | Flex pegs miss the buttons | `btn_x`, `btn_y` |
 | Button tabs too stiff / too soft | `flex_t` (1.0), `flex` length (7; 8 worked, below ~6 PLA may crack) |
