@@ -72,7 +72,6 @@ flex_gap = 0.4;         // peg tip to the button plunger; keep above press_gap (
 plug = [11, 6.6];       // USB opening, sized for a plug overmold so most cables seat fully;
                         // wider cuts through the case corner, since the port is off-centre
 plug_r = 1.5;
-pry_w = 6;              // fingernail notch on the back rim for opening the lid
 
 $fn = 128;
 
@@ -116,8 +115,6 @@ module shell() {
     // relief for the power switch lever, open towards the back so the board drops in
     translate([pcb_d / 2 - 0.5, sw_y - sw_len / 2 - 0.5, z_sw[0] - 0.4])
       cube([0.5 + sw_out + 0.4, sw_len + 1, z_top]);
-    // fingernail notch on the back rim, opposite the USB tab
-    translate([-pry_w / 2, pcb_d / 2 + clear - 0.5, z_top - 1]) cube([pry_w, wall + 1, 2]);
   }
 }
 

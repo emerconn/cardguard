@@ -14,7 +14,7 @@ Needs OpenSCAD 2025+ (Manifold backend, renders in seconds). Arch: `omarchy pkg 
 - **Lid**: friction-fits into the back; a flange round its edge rests on a stepped ledge in the shell rim, so it
   cannot tip in when pressed near the edge. Two posts press the board onto the front lip via the ESP32 module can and the
   USB shell. REST and BOOT (the firmware's button) each get a flex tab cut into the lid: a thinned PLA tongue with
-  a peg under its tip, pressed with a finger. Fingernail notch on the rim opposite the USB tab to pry it off.
+  a peg under its tip, pressed with a finger.
 - Outside: ~40.7 x 42.7 mm, 11.2 mm thick.
 
 ## Build
