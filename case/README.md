@@ -9,7 +9,8 @@ Needs OpenSCAD 2025+ (Manifold backend, renders in seconds). Arch: `omarchy pkg 
 ## v1
 
 - **Shell**: front lip over the screen's dead border (opening Ø 33.4 hides glass offset), board drops in from the back.
-  USB opening sized for a plug overmold (11 x 6.6) around the off-centre port, so most cables seat fully. Relief slot for the power-switch lever
+  USB opening port-sized (9.2 x 3.0) around the off-centre port, so no PCB shows; only slim cables seat fully
+  (the plug's housing can't enter, the port face is 2.35 behind the case face). Relief slot for the power-switch lever
   (switch covered in v1, no battery yet).
 - **Lid**: friction-fits into the back; a flange round its edge rests on a stepped ledge in the shell rim, so it
   cannot tip in when pressed near the edge. Two posts press the board onto the front lip via the ESP32 module can and the

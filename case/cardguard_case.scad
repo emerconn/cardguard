@@ -69,9 +69,9 @@ flex = [7, 5];          // button flex tabs: tongue length (radial, hinged at th
 flex_t = 1.0;           // tongue thickness (thinner = softer press)
 flex_slot = 0.6;        // cut round the tongue
 flex_gap = 0.4;         // peg tip to the button plunger; keep above press_gap (0.2 clicked when pressing the whole lid)
-plug = [11, 6.6];       // USB opening, sized for a plug overmold so most cables seat fully;
-                        // wider cuts through the case corner, since the port is off-centre
-plug_r = 1.5;
+plug = [9.2, usb_h];    // USB opening: port-sized (bottom edge level with the PCB back, so no PCB shows); only
+                        // slim cables whose metal tip reaches through the 2.35 recess will seat
+plug_r = 1.2;
 
 $fn = 128;
 
