@@ -11,9 +11,10 @@ Needs OpenSCAD 2025+ (Manifold backend, renders in seconds). Arch: `omarchy pkg 
 - **Shell**: front lip over the screen's dead border (opening Ø 33.4 hides glass offset), board drops in from the back.
   USB opening sized for a plug overmold (11 x 6.6) around the off-centre port, so most cables seat fully. Relief slot for the power-switch lever
   (switch covered in v1, no battery yet).
-- **Lid**: friction-fits into the back. Two posts press the board onto the front lip via the ESP32 module can and the
+- **Lid**: friction-fits into the back; a flange round its edge rests on a stepped ledge in the shell rim, so it
+  cannot tip in when pressed near the edge. Two posts press the board onto the front lip via the ESP32 module can and the
   USB shell. Oval pin holes over REST and BOOT. Fingernail notch on the rim opposite the USB tab to pry it off.
-- Outside: ~40.7 x 42.7 mm, 10.8 mm thick.
+- Outside: ~40.7 x 42.7 mm, 11.2 mm thick.
 
 ## Build
 
@@ -31,7 +32,8 @@ openscad -D 'part="section"' -D section_x=12 ...   # 2D slice through x = 12 (BO
 ## Printing
 
 - Shell: front face down on the bed (the lip opening has a 45° chamfer, the USB opening bridges), no supports.
-- Lid: flat, posts up.
+- Lid: `lid.stl` is already in print orientation (flat, posts up). Load as is; never use the slicer's Mirror
+  (it swaps the USB post to the wrong side), only rotate.
 - 0.2 mm layers, PLA or PETG.
 
 ## Tuning after a test print

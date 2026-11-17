@@ -59,7 +59,9 @@ wall = 1.6;             // side wall
 lip = 1.2;              // front lip thickness, in front of the glass
 view_open = 33.4;       // front opening: visible area + 0.5 per side, hides a <=0.5 glass offset
 back_gap = 0.3;         // tallest part to the lid's inner face
-lid_t = 1.6;
+lid_t = 2.0;
+step_w = 0.8;           // stepped rim: ledge cut into the shell wall's top edge, the lid's flange rests on it
+step_h = 0.8;           // (holds the lid up all round, so pressing near an edge can't tip it)
 fit = 0.05;             // lid edge to shell wall, each side (0.1 printed loose; raise if too tight to push in)
 press_gap = 0.1;        // lid posts to the module / USB tops (0 = touching)
 btn_hole_extra = 0.6;   // button hole over the plunger, total
@@ -100,6 +102,8 @@ module shell() {
     translate([0, 0, -lip]) linear_extrude(z_top + lip) outer_outline();
     // board pocket, open at the back
     linear_extrude(z_top + 1) pocket_outline();
+    // ledge for the lid's flange
+    translate([0, 0, z_top - step_h]) linear_extrude(step_h + 1) offset(r = step_w) pocket_outline();
     // front opening with a 45 degree chamfer on the outside
     translate([0, 0, -lip - 0.01]) cylinder(h = lip + 0.02, d1 = view_open + 2 * lip, d2 = view_open);
     // USB opening through the tab end wall
@@ -117,6 +121,7 @@ module lid() {
   difference() {
     union() {
       translate([0, 0, z_lid]) linear_extrude(lid_t) offset(delta = -fit) pocket_outline();
+      translate([0, 0, z_top - step_h]) linear_extrude(step_h) offset(delta = -fit) offset(r = step_w) pocket_outline();
       // posts press the board forward onto the front lip: on the module can and the USB shell
       translate([module_xy[0], module_xy[1], z_module_top + press_gap]) cylinder(h = z_lid - z_module_top - press_gap + 0.01, d = 4);
       translate([usb_x - 3, -tab_end + 1, z_usb_top + press_gap]) cube([6, 3, z_lid - z_usb_top - press_gap + 0.01]);
@@ -163,7 +168,7 @@ module section(x) {
 }
 
 if (part == "shell") shell();
-else if (part == "lid") lid();
+else if (part == "lid") translate([0, 0, z_top]) rotate([180, 0, 0]) lid();  // print orientation: outer face on the bed, posts up (rotated, never mirror)
 else if (part == "board") board();
 else if (part == "section") {
   color("#8ab") section(section_x) shell();
