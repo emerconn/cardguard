@@ -60,7 +60,7 @@ lip = 1.2;              // front lip thickness, in front of the glass
 view_open = 33.4;       // front opening: visible area + 0.5 per side, hides a <=0.5 glass offset
 back_gap = 0.3;         // tallest part to the lid's inner face
 lid_t = 1.6;
-fit = 0.1;              // lid edge to shell wall, each side (raise if the lid is too tight to push in)
+fit = 0.05;             // lid edge to shell wall, each side (0.1 printed loose; raise if too tight to push in)
 press_gap = 0.1;        // lid posts to the module / USB tops (0 = touching)
 btn_hole_extra = 0.6;   // button hole over the plunger, total
 plug = [11, 6.6];       // USB opening, sized for a plug overmold so most cables seat fully;
