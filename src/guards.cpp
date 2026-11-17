@@ -36,15 +36,15 @@ static void diamond(Smooth &s, float x, float y, uint16_t c) {
 
 static void chipLeaderScene(Smooth &s) {
   s.fill(RGB565_BLACK);
-  s.circle(120, 120, 119.5f, GOLD_L, GOLD_D);
-  s.circle(120, 120, 113, INK);
-  s.circle(120, 120, 84, GOLD_L, GOLD_D);
+  s.circle(120, 120, 119.5f, GOLD_L, GOLD_D, 113);  // holes: inner circles cover the middle
+  s.circle(120, 120, 113, INK, INK, 84);
+  s.circle(120, 120, 84, GOLD_L, GOLD_D, 81);
   s.circle(120, 120, 81, PAPER);
 
-  s.clipR = 81;  // stripes stay inside the white face
+  s.clip(81);  // stripes stay inside the white face
   s.rect(0, 86, 240, 24, RED);
   s.rect(0, 126, 240, 22, INK);
-  s.clipR = 1e9f;
+  s.clip(0);
 
   float outline[] = {73.5f, 105.5f, 166.5f, 105.5f, 166.5f, 139, 120, 183.5f, 73.5f, 139};
   float body[] = {78.5f, 110.5f, 161.5f, 110.5f, 161.5f, 137, 120, 176.5f, 78.5f, 137};
