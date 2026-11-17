@@ -11,28 +11,40 @@ static const uint16_t GREEN_D = RGB565(29, 107, 42);
 static const uint16_t INK = RGB565(18, 18, 18);
 static const uint16_t PAPER = RGB565(250, 250, 250);
 
-// Card suits about 18px tall times k, centred on (x, y).
-static void spade(Smooth &s, float x, float y, uint16_t c, float k = 1) {
-  s.tri(x - 7.6f * k, y + 0.5f * k, x + 7.6f * k, y + 0.5f * k, x, y - 9 * k, c);
-  s.circle(x - 4 * k, y + 2 * k, 4.2f * k, c);
-  s.circle(x + 4 * k, y + 2 * k, 4.2f * k, c);
-  s.tri(x, y + 2 * k, x - 3 * k, y + 9 * k, x + 3 * k, y + 9 * k, c);
+// Maps shape-local offsets to the screen: centred on (x, y), scaled by k, rotated by deg.
+struct Place {
+  float x0, y0, k, co, sn;
+  Place(float x, float y, float k, float deg) : x0(x), y0(y), k(k), co(cosf(deg * DEG_TO_RAD)), sn(sinf(deg * DEG_TO_RAD)) {}
+  float x(float dx, float dy) const { return x0 + (dx * co - dy * sn) * k; }
+  float y(float dx, float dy) const { return y0 + (dx * sn + dy * co) * k; }
+};
+
+// Card suits about 18px tall times k, centred on (x, y), rotated by deg.
+static void spade(Smooth &s, float x, float y, uint16_t c, float k = 1, float deg = 0) {
+  Place p(x, y, k, deg);
+  s.tri(p.x(-7.6f, 0.5f), p.y(-7.6f, 0.5f), p.x(7.6f, 0.5f), p.y(7.6f, 0.5f), p.x(0, -9), p.y(0, -9), c);
+  s.circle(p.x(-4, 2), p.y(-4, 2), 4.2f * k, c);
+  s.circle(p.x(4, 2), p.y(4, 2), 4.2f * k, c);
+  s.tri(p.x(0, 2), p.y(0, 2), p.x(-3, 9), p.y(-3, 9), p.x(3, 9), p.y(3, 9), c);
 }
-static void heart(Smooth &s, float x, float y, uint16_t c, float k = 1) {
-  s.circle(x - 4.2f * k, y - 3.5f * k, 4.8f * k, c);
-  s.circle(x + 4.2f * k, y - 3.5f * k, 4.8f * k, c);
-  s.tri(x - 8.8f * k, y - 2 * k, x + 8.8f * k, y - 2 * k, x, y + 8.5f * k, c);
+static void heart(Smooth &s, float x, float y, uint16_t c, float k = 1, float deg = 0) {
+  Place p(x, y, k, deg);
+  s.circle(p.x(-4.2f, -3.5f), p.y(-4.2f, -3.5f), 4.8f * k, c);
+  s.circle(p.x(4.2f, -3.5f), p.y(4.2f, -3.5f), 4.8f * k, c);
+  s.tri(p.x(-8.8f, -2), p.y(-8.8f, -2), p.x(8.8f, -2), p.y(8.8f, -2), p.x(0, 8.5f), p.y(0, 8.5f), c);
 }
-static void club(Smooth &s, float x, float y, uint16_t c, float k = 1) {
-  s.circle(x, y - 4.5f * k, 4 * k, c);
-  s.circle(x - 4.6f * k, y + 1.5f * k, 4 * k, c);
-  s.circle(x + 4.6f * k, y + 1.5f * k, 4 * k, c);
+static void club(Smooth &s, float x, float y, uint16_t c, float k = 1, float deg = 0) {
+  Place p(x, y, k, deg);
+  s.circle(p.x(0, -4.5f), p.y(0, -4.5f), 4 * k, c);
+  s.circle(p.x(-4.6f, 1.5f), p.y(-4.6f, 1.5f), 4 * k, c);
+  s.circle(p.x(4.6f, 1.5f), p.y(4.6f, 1.5f), 4 * k, c);
   s.circle(x, y, 2.5f * k, c);  // fills the gap where the three lobes meet
-  s.tri(x, y, x - 3 * k, y + 9 * k, x + 3 * k, y + 9 * k, c);
+  s.tri(x, y, p.x(-3, 9), p.y(-3, 9), p.x(3, 9), p.y(3, 9), c);
 }
-static void diamond(Smooth &s, float x, float y, uint16_t c, float k = 1) {
-  float p[] = {x, y - 9 * k, x + 7 * k, y, x, y + 9 * k, x - 7 * k, y};
-  s.poly(p, 4, c);
+static void diamond(Smooth &s, float x, float y, uint16_t c, float k = 1, float deg = 0) {
+  Place p(x, y, k, deg);
+  float q[] = {p.x(0, -9), p.y(0, -9), p.x(7, 0), p.y(7, 0), p.x(0, 9), p.y(0, 9), p.x(-7, 0), p.y(-7, 0)};
+  s.poly(q, 4, c);
 }
 
 static void chipLeaderScene(Smooth &s) {
@@ -155,7 +167,7 @@ static const uint16_t SKIN = RGB565(248, 214, 170);
 static const uint16_t HAIR = RGB565(140, 84, 36);
 static const uint16_t CARD_EDGE = RGB565(110, 110, 110);
 
-typedef void (*SuitFn)(Smooth &, float, float, uint16_t, float);
+typedef void (*SuitFn)(Smooth &, float, float, uint16_t, float, float);
 
 // A 50 x 70 court card centred on (cx, cy), rotated by deg: corner indices plus a simple
 // king (crown, beard) or jack (feathered hat) figure in a frame of the suit's colour.
@@ -198,7 +210,7 @@ static void courtCard(Smooth &s, float cx, float cy, float deg, char rank, SuitF
   // Corner indices: rank over a small suit, top-left and (upside down) bottom-right.
   for (int f = -1; f <= 1; f += 2) {
     s.glyph(&PokerFont4x, 0.11f, rank, X(19 * f, 26 * f), Y(19 * f, 26 * f), deg + (f > 0 ? 180 : 0), col);
-    suit(s, X(19 * f, 16 * f), Y(19 * f, 16 * f), col, 0.42f);
+    suit(s, X(19 * f, 16 * f), Y(19 * f, 16 * f), col, 0.42f, deg + (f > 0 ? 180 : 0));
   }
 }
 
@@ -210,5 +222,105 @@ static void jackKingOffScene(Smooth &s) {
 
 static void jackKingOff(Arduino_GFX *gfx) { smoothDraw(gfx, jackKingOffScene); }
 
-const GuardFn GUARDS[] = {chipLeader, ducks, jackKingOff};
+// Five-pointed star of outer radius r: a pentagon core plus five point triangles.
+static void star(Smooth &s, float x, float y, float r, uint16_t c) {
+  float in[10];
+  for (int i = 0; i < 5; i++) {
+    float a = (-90 + 36 + 72 * i) * DEG_TO_RAD;
+    in[2 * i] = x + 0.4f * r * cosf(a), in[2 * i + 1] = y + 0.4f * r * sinf(a);
+  }
+  s.poly(in, 5, c);
+  for (int i = 0; i < 5; i++) {
+    float a = (-90 + 72 * i) * DEG_TO_RAD;
+    int j = (i + 4) % 5;  // inner points either side of tip i
+    s.tri(x + r * cosf(a), y + r * sinf(a), in[2 * j], in[2 * j + 1], in[2 * i], in[2 * i + 1], c);
+  }
+}
+
+// A 56 x 78 number card centred on (cx, cy), rotated by deg, with its rank in the top corner
+// (corner = -1 left, +1 right) and the suit under it, both turned with the card.
+static void pipCard(Smooth &s, float cx, float cy, float deg, char rank, int corner, SuitFn suit, uint16_t col) {
+  Place p(cx, cy, 1, deg);
+  s.rrect(cx, cy, 58.5f, 80.5f, 5, deg, CARD_EDGE);
+  s.rrect(cx, cy, 56, 78, 4, deg, PAPER);
+  float x = corner * 18;  // 4 px padding from the card edge to the 12 px wide rank, suit centred under it
+  s.glyph(&TitleFont4x, 0.3f, rank, p.x(x, -27), p.y(x, -27), deg, col);
+  suit(s, p.x(x, -8), p.y(x, -8), col, 0.95f, deg);
+}
+
+static const uint16_t BROWN = RGB565(178, 98, 46);
+static const uint16_t BROWN_D = RGB565(84, 42, 18);
+static const uint16_t TAN = RGB565(218, 156, 100);
+static const uint16_t HOOF = RGB565(58, 34, 24);
+
+// Grinning cartoon donkey filling the centre: ears, head, muzzle, body, two hooves at the bottom.
+static void donkey(Smooth &s) {
+  for (int pass = 0; pass < 2; pass++) {  // dark grown pass = outline, then fill
+    float g = pass ? 0 : 1.6f;
+    uint16_t c = pass ? BROWN : BROWN_D;
+    float body[] = {109 - g, 145, 131 + g, 145, 136 + g, 178 + g, 104 - g, 178 + g};
+    s.poly(body, 4, c);
+    s.rrect(103, 180, 30 + 2 * g, 11 + 2 * g, 5.5f + g, 133, c);  // legs out to the hooves
+    s.rrect(137, 180, 30 + 2 * g, 11 + 2 * g, 5.5f + g, 47, c);
+    s.ellipse(101, 66, 8 + g, 20 + g, -18, c);  // ears
+    s.ellipse(139, 66, 8 + g, 20 + g, 18, c);
+    s.ellipse(120, 104, 27 + g, 30 + g, 0, c);  // head
+  }
+  s.ellipse(101, 68, 4, 13, -18, TAN);  // inside of the ears
+  s.ellipse(139, 68, 4, 13, 18, TAN);
+  s.tri(109, 81, 117, 79, 106, 67, BROWN_D);  // tuft of mane
+  s.tri(115, 79, 125, 79, 120, 63, BROWN_D);
+  s.tri(123, 79, 131, 81, 134, 67, BROWN_D);
+
+  for (int side = -1; side <= 1; side += 2) {
+    float ex = 120 + 11 * side;
+    s.ellipse(ex, 98, 9.2f, 11.2f, 0, BROWN_D);  // eyes
+    s.ellipse(ex, 98, 8, 10, 0, PAPER);
+    s.circle(ex - 3 * side, 101, 3.6f, INK);
+  }
+
+  s.ellipse(120, 128, 22.5f, 17.5f, 0, BROWN_D);  // muzzle
+  s.ellipse(120, 128, 21, 16, 0, TAN);
+  s.ellipse(111, 122, 3.6f, 2.4f, -20, BROWN_D);  // nostrils
+  s.ellipse(129, 122, 3.6f, 2.4f, 20, BROWN_D);
+  s.ellipse(120, 138, 14, 6, 0, INK);  // grin: a dark-rimmed half ellipse of teeth
+  s.ellipse(120, 138.6f, 12.4f, 4.6f, 0, PAPER);
+  s.rect(103, 129, 34, 9, TAN);
+
+  for (int side = -1; side <= 1; side += 2) {
+    float hx = 120 + 30 * side;
+    s.rrect(hx, 196, 29, 20, 7.5f, 0, BROWN_D);  // hooves with a fringe of hair
+    s.rrect(hx, 196, 26, 17, 6, 0, HOOF);
+    for (int i = -1; i <= 1; i++) s.tri(hx + 7 * i - 4, 189, hx + 7 * i + 4, 189, hx + 7 * i, 183, BROWN_D);
+  }
+}
+
+static void donkScene(Smooth &s) {
+  s.fill(RGB565_BLACK);
+  s.circle(120, 120, 119.5f, GOLD_L, GOLD_D, 112);
+  s.circle(120, 120, 112, INK, INK, 86);
+  s.circle(120, 120, 86, GOLD_D);  // rope ring
+  for (int i = 0; i < 52; i++) {
+    float a = i * (360.0f / 52), t = a * DEG_TO_RAD;
+    s.ellipse(120 + 83.5f * cosf(t), 120 + 83.5f * sinf(t), 3.6f, 1.5f, a + 90 + 50, GOLD_L);
+  }
+  s.circle(120, 120, 81, GOLD_L, GOLD);
+
+  s.arcText(&TitleFont4x, 0.27f, "I'M A DONK", 99, -90, 7, GOLD);
+  s.arcText(&TitleFont4x, 0.18f, "SEVEN AND TWO OFFSUIT", 99, 90, 1.5f, GOLD, true);
+  const float side[] = {-30, -15, 0, 15};
+  for (int i = 0; i < 4; i++)
+    for (int left = 0; left < 2; left++) {
+      float a = (left ? 180 - side[i] : side[i]) * DEG_TO_RAD;
+      star(s, 120 + 99 * cosf(a), 120 + 99 * sinf(a), 6.5f, GOLD);
+    }
+
+  pipCard(s, 86, 124, -15, '7', -1, spade, INK);
+  pipCard(s, 154, 124, 15, '2', 1, diamond, RED);
+  donkey(s);
+}
+
+static void donk(Arduino_GFX *gfx) { smoothDraw(gfx, donkScene); }
+
+const GuardFn GUARDS[] = {chipLeader, ducks, jackKingOff, donk};
 const int GUARD_COUNT = sizeof(GUARDS) / sizeof(GUARDS[0]);

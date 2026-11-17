@@ -8,6 +8,6 @@ F=/usr/share/fonts/liberation
   echo '#pragma once'
   echo '#include <Arduino_GFX.h>'
   echo
-  python3 tools/ttf2gfx.py $F/LiberationSans-Bold.ttf 72 TitleFont4x " THECIPLADRUKQS"
+  python3 tools/ttf2gfx.py $F/LiberationSans-Bold.ttf 72 TitleFont4x " THECIPLADRUKQSMNO'VWF72"
   python3 tools/ttf2gfx.py $F/LiberationSerif-Bold.ttf 108 PokerFont4x " POKERHLD'EMCT2sIVJANGF"
 } > src/fonts.h
