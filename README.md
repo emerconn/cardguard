@@ -4,12 +4,22 @@ Poker card guard on an ESP32-C3 1.28" round GC9A01 display (240x240). Multiple d
 
 ## Build
 
+Needs [PlatformIO](https://platformio.org/) (`pio`). Run from the repo root; the board is the only
+environment (`esp32-c3`), so no `-e` is needed.
+
 ```sh
-pio run -t upload -t monitor   # stop any other serial monitor first, it holds the port
+pio run                        # compile firmware -> .pio/build/esp32-c3/firmware.bin
+pio run -t upload              # compile if needed, then flash over USB
+pio device monitor             # serial output at 115200; Ctrl+C to exit
+pio run -t upload -t monitor   # all of the above in one go
 ```
 
+- Only one program can hold the serial port: close any running monitor before uploading, or the
+  upload fails with "port is busy".
+- The monitor shows `guard N drawn in X ms` after each redraw. Typing `n` steps to the next design.
+- If upload can't connect, hold BOOT and tap RST (or hold BOOT while plugging in), then upload.
+
 Pins are in `src/main.cpp` (vendor pinout, RST not wired).
-If upload fails, hold BOOT while plugging in.
 
 Preview every guard on the PC, using the real Arduino_GFX drawing code:
 
