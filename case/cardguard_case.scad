@@ -64,6 +64,7 @@ step_w = 0.8;           // stepped rim: ledge cut into the shell wall's top edge
 step_h = 0.8;           // (holds the lid up all round, so pressing near an edge can't tip it)
 fit = 0.05;             // lid edge to shell wall, each side (0.1 printed loose; raise if too tight to push in)
 press_gap = 0.3;        // lid posts to the module / USB tops (0 = touching; 0.1 and 0.2 still sat on the posts)
+usb_press_gap = 0.2;    // USB post only: 0.3 left it not touching
 flex = [7, 5];          // button flex tabs: tongue length (radial, hinged at the centre end; 8 worked, 6 is near PLA's crack limit) x width
 flex_t = 1.0;           // tongue thickness (thinner = softer press)
 flex_slot = 0.6;        // cut round the tongue
@@ -141,7 +142,7 @@ module lid() {
       translate([0, 0, z_top - step_h]) linear_extrude(step_h) offset(delta = -fit) offset(r = step_w) pocket_outline();
       // posts press the board forward onto the front lip: on the module can and the USB shell
       translate([module_xy[0], module_xy[1], z_module_top + press_gap]) cylinder(h = z_lid - z_module_top - press_gap + 0.01, d = 4);
-      translate([usb_x - 3, -tab_end + 1, z_usb_top + press_gap]) cube([6, 3, z_lid - z_usb_top - press_gap + 0.01]);
+      translate([usb_x - 3, -tab_end + 1, z_usb_top + usb_press_gap]) cube([6, 3, z_lid - z_usb_top - usb_press_gap + 0.01]);
     }
     translate([0, 0, z_lid - 1]) linear_extrude(lid_t + 2) flex_cut();
     translate([0, 0, z_lid - 1]) linear_extrude(z_top - flex_t - z_lid + 1) flex_tongue();  // thin the tongues from the inside

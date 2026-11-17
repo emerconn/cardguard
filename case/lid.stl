@@ -17025,70 +17025,70 @@ solid OpenSCAD_Model
   endfacet
   facet normal -1 0 0
     outer loop
-      vertex -0.28500000000000014 19 3.5
+      vertex -0.28500000000000014 19 3.5999999999999996
       vertex -0.28500000000000014 16 2
-      vertex -0.28500000000000014 16 3.5
+      vertex -0.28500000000000014 16 3.5999999999999996
     endloop
   endfacet
   facet normal -1 0 0
     outer loop
-      vertex -0.28500000000000014 19 3.5
+      vertex -0.28500000000000014 19 3.5999999999999996
       vertex -0.28500000000000014 19 2
       vertex -0.28500000000000014 16 2
     endloop
   endfacet
   facet normal 0 0 1
     outer loop
-      vertex -0.28500000000000014 19 3.5
-      vertex -0.28500000000000014 16 3.5
-      vertex 5.715 16 3.5
+      vertex -0.28500000000000014 19 3.5999999999999996
+      vertex -0.28500000000000014 16 3.5999999999999996
+      vertex 5.715 16 3.5999999999999996
     endloop
   endfacet
   facet normal 0 0 1
     outer loop
-      vertex -0.28500000000000014 19 3.5
-      vertex 5.715 16 3.5
-      vertex 5.715 19 3.5
+      vertex -0.28500000000000014 19 3.5999999999999996
+      vertex 5.715 16 3.5999999999999996
+      vertex 5.715 19 3.5999999999999996
     endloop
   endfacet
   facet normal 0 1 0
     outer loop
-      vertex -0.28500000000000014 19 3.5
-      vertex 5.715 19 3.5
+      vertex -0.28500000000000014 19 3.5999999999999996
+      vertex 5.715 19 3.5999999999999996
       vertex -0.28500000000000014 19 2
     endloop
   endfacet
   facet normal 0 1 0
     outer loop
       vertex -0.28500000000000014 19 2
-      vertex 5.715 19 3.5
+      vertex 5.715 19 3.5999999999999996
       vertex 5.715 19 2
     endloop
   endfacet
   facet normal 0 -1 0
     outer loop
-      vertex -0.28500000000000014 16 3.5
+      vertex -0.28500000000000014 16 3.5999999999999996
       vertex 5.715 16 2
-      vertex 5.715 16 3.5
+      vertex 5.715 16 3.5999999999999996
     endloop
   endfacet
   facet normal 0 -1 0
     outer loop
-      vertex -0.28500000000000014 16 3.5
+      vertex -0.28500000000000014 16 3.5999999999999996
       vertex -0.28500000000000014 16 2
       vertex 5.715 16 2
     endloop
   endfacet
   facet normal 1 0 0
     outer loop
-      vertex 5.715 19 3.5
-      vertex 5.715 16 3.5
+      vertex 5.715 19 3.5999999999999996
+      vertex 5.715 16 3.5999999999999996
       vertex 5.715 19 2
     endloop
   endfacet
   facet normal 1 0 0
     outer loop
-      vertex 5.715 16 3.5
+      vertex 5.715 16 3.5999999999999996
       vertex 5.715 16 2
       vertex 5.715 19 2
     endloop
