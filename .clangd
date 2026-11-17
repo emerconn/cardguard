@@ -1,0 +1,10 @@
+CompileFlags:
+  # GCC/RISC-V-only flags clang rejects
+  Remove: [-march=*, -mabi=*, -fstrict-volatile-bitfields, -fno-tree-switch-conversion, -fno-jump-tables]
+  # Toolchain std headers, for clangd started without --query-driver (Claude's clangd-lsp plugin).
+  # shortcut: absolute paths pinned to GCC 14.2.0, update if PlatformIO bumps the toolchain
+  Add:
+    - -isystem/home/emerconn/.platformio/packages/toolchain-riscv32-esp/riscv32-esp-elf/include/c++/14.2.0
+    - -isystem/home/emerconn/.platformio/packages/toolchain-riscv32-esp/riscv32-esp-elf/include/c++/14.2.0/riscv32-esp-elf/rv32imc_zicsr_zifencei/ilp32
+    - -isystem/home/emerconn/.platformio/packages/toolchain-riscv32-esp/riscv32-esp-elf/include/c++/14.2.0/backward
+    - -isystem/home/emerconn/.platformio/packages/toolchain-riscv32-esp/riscv32-esp-elf/include
