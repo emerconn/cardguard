@@ -12,6 +12,7 @@
 part = "assembly";  // "shell" | "lid" | "board" | "assembly" | "section" (2D slice at x = section_x)
 section_x = 0;
 cutaway = true;     // assembly: cut the case in half to show the board inside
+show_shell = true;  // assembly: false hides the shell (board + lid only)
 
 /* [Board, measured] */
 pcb_d = 37.0;           // PCB circle
@@ -69,15 +70,27 @@ flex = [7, 5];          // button flex tabs: tongue length (radial, hinged at th
 flex_t = 1.0;           // tongue thickness (thinner = softer press)
 flex_slot = 0.6;        // cut round the tongue
 flex_gap = 0.4;         // peg tip to the button plunger; keep above press_gap (0.2 clicked when pressing the whole lid)
-plug = [9.2, usb_h];    // USB opening: port-sized (bottom edge level with the PCB back, so no PCB shows); only
+plug = [9.2, usb_h];    // USB opening: port-sized (bottom edge at or above the PCB back, so no PCB shows); only
                         // slim cables whose metal tip reaches through the 2.35 recess will seat
 plug_r = 1.2;
+usb_raise = 0.2;        // USB opening moved up one layer: its top edge prints as a bridge and sagged onto the port
+
+// Lid screw: M2 x 6 flat head through the USB end wall, left of the port (-x), through a block on the lid into a
+// hex nut sunk in the block's inner face (only ~4.5 between the PCB back and the lid: no room for an insert).
+screw_x = -5.20;        // left of the USB port: ~0.9 nut walls both sides (2 lines); further left the countersink runs into the corner
+screw_d = 2.4;          // clearance hole in the shell wall and the block
+screw_head = 4.0;       // countersink, 90 degrees (M2 flat head ~3.8)
+screw_block = 4;        // lid block depth (y); an M2 x 6 ends ~0.45 past the nut. Width: from the lid's edge to
+                        // 0.2 short of the USB shell
+nut = [4.2, 1.7];       // M2 hex nut pocket: across flats (nut 4.0) x depth (nut 1.6), flat side against the lid plate
 
 $fn = 128;
 
 z_lid = z_tallest + back_gap;   // lid inner face
 z_top = z_lid + lid_t;          // shell back rim = lid outer face
-usb_z = (z_pcb_back + z_usb_top) / 2;
+usb_z = (z_pcb_back + z_usb_top) / 2 + usb_raise;  // USB opening centre
+y_end = -(tab_end + fpc_out + clear);  // pocket's inner face at the USB end
+screw_z = z_lid - nut[0] / 2;  // nut pocket's flat flush with the lid plate's inner face
 
 // ---------------------------------------------------------------- 2D outlines
 
@@ -112,6 +125,10 @@ module shell() {
     // USB opening through the tab end wall
     translate([usb_x, -(tab_end + fpc_out + clear + wall / 2), usb_z]) rotate([90, 0, 0])
       linear_extrude(wall * 2 + 1, center = true) rounded_rect(plug, plug_r);
+    // lid screw: clearance hole + countersink
+    translate([screw_x, y_end - wall - 1, screw_z]) rotate([-90, 0, 0]) cylinder(h = wall + 2, d = screw_d, $fn = 32);
+    translate([screw_x, y_end - wall - 0.01, screw_z]) rotate([-90, 0, 0])
+      cylinder(h = (screw_head - screw_d) / 2 + 0.01, d1 = screw_head, d2 = screw_d, $fn = 32);
     // relief for the power switch lever, open towards the back so the board drops in
     translate([pcb_d / 2 - 0.5, sw_y - sw_len / 2 - 0.5, z_sw[0] - 0.4])
       cube([0.5 + sw_out + 0.4, sw_len + 1, z_top]);
@@ -139,8 +156,17 @@ module lid() {
       translate([0, 0, z_top - step_h]) linear_extrude(step_h) offset(delta = -fit) offset(r = step_w) pocket_outline();
       // posts press the board forward onto the front lip: on the module can and the USB shell
       translate([module_xy[0], module_xy[1], z_module_top + press_gap]) cylinder(h = z_lid - z_module_top - press_gap + 0.01, d = 4);
+      // block for the lid screw, against the USB end wall; ends at the nut pocket's flat, so the pocket is open on
+      // that side (prints with no bridge, the narrower opening still holds the nut)
+      translate([0, 0, screw_z - nut[0] / 2]) linear_extrude(z_lid - screw_z + nut[0] / 2 + 0.01) intersection() {
+        offset(delta = -fit) pocket_outline();
+        translate([-pcb_d / 2, y_end]) square([usb_x - usb_w / 2 - 0.2 + pcb_d / 2, fit + screw_block]);
+      }
       translate([usb_x - 3, -tab_end + 1, z_usb_top + usb_press_gap]) cube([6, 3, z_lid - z_usb_top - usb_press_gap + 0.01]);
     }
+    translate([screw_x, y_end - 0.01, screw_z]) rotate([-90, 0, 0]) cylinder(h = screw_block + 1, d = screw_d, $fn = 32);
+    translate([screw_x, y_end + fit + screw_block - nut[1], screw_z]) rotate([-90, 0, 0])
+      cylinder(h = nut[1] + 1, d = nut[0] / cos(30), $fn = 6);  // nut pocket
     translate([0, 0, z_lid - 1]) linear_extrude(lid_t + 2) flex_cut();
     translate([0, 0, z_lid - 1]) linear_extrude(z_top - flex_t - z_lid + 1) flex_tongue();  // thin the tongues from the inside
   }
@@ -193,7 +219,7 @@ else if (part == "section") {
 else {
   board();
   difference() {  // cut away the -x half so the fit is visible
-    union() { color("#8ab", 0.6) shell(); color("#c96", 0.8) lid(); }
+    union() { if (show_shell) color("#8ab", 0.6) shell(); color("#c96", 0.8) lid(); }
     if (cutaway) translate([-50, -50, -10]) cube([50, 100, 30]);
   }
 }
