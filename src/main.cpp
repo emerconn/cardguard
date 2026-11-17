@@ -1,6 +1,7 @@
 #include <Arduino_GFX_Library.h>
 #include <driver/gpio.h>
 #include <esp_sleep.h>
+#include <NimBLEDevice.h>
 #include "guards.h"
 
 // Pins from the vendor's Factory_samples_without_touch sketch (ESP32-2424S012). RST is not wired.
@@ -15,6 +16,16 @@ Arduino_DataBus *bus = new Arduino_ESP32SPI(PIN_DC, PIN_CS, PIN_SCK, PIN_MOSI, G
 Arduino_GFX *gfx = new Arduino_GC9A01(bus, GFX_NOT_DEFINED, 0 /* rotation */, true /* IPS */);
 
 int current = 0;
+volatile int requested = -1;  // set by BLE, drawn in loop(): the BLE callback runs on another task
+
+// Phone writes a guard number: text "2" (nRF Connect "Text") or a raw byte 0x02 both work.
+struct SelectCallbacks : NimBLECharacteristicCallbacks {
+  void onWrite(NimBLECharacteristic *c, NimBLEConnInfo &) override {
+    std::string v = c->getValue();
+    if (v.empty()) return;
+    requested = isdigit((unsigned char)v[0]) ? atoi(v.c_str()) : (uint8_t)v[0];
+  }
+};
 
 void show(int i) {
   current = (i + GUARD_COUNT) % GUARD_COUNT;
@@ -31,6 +42,16 @@ void setup() {
   pinMode(PIN_BTN, INPUT_PULLUP);
   if (!gfx->begin(80000000)) Serial.println("gfx->begin() failed");  // 80 MHz SPI: library default is 40
   show(0);
+
+  NimBLEDevice::init("cardguard");
+  NimBLEServer *server = NimBLEDevice::createServer();  // re-advertises on disconnect by default
+  NimBLEService *svc = server->createService("9a49e65d-c7e4-4d64-a03d-061e26e9b26a");
+  svc->createCharacteristic("6eeb6fbb-9458-47d6-9379-e73cab7dfa04", NIMBLE_PROPERTY::WRITE)
+      ->setCallbacks(new SelectCallbacks());
+  svc->start();
+  NimBLEDevice::getAdvertising()->addServiceUUID(svc->getUUID());
+  NimBLEDevice::getAdvertising()->setName("cardguard");
+  NimBLEDevice::getAdvertising()->start();
 }
 
 void waitRelease() {
@@ -67,5 +88,8 @@ void loop() {
     }
   }
   if (Serial.available() && Serial.read() == 'n') show(current + 1);  // tools/drawtime.py steps guards this way
-  // TODO: wireless switching (small web page) calls show() too.
+  if (requested >= 0) {
+    show(requested);
+    requested = -1;
+  }
 }
