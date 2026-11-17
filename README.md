@@ -44,6 +44,7 @@ Target: **~20 designs**, each a crisp digital (vector-style) design, not a photo
 | 2026-11-16 | Candidates: `option/renderer` and `option/svg` branches | See below |
 | 2026-11-16 | **Chosen: renderer** (`src/smooth.h`), merged to main; SVG kept on `option/svg` | Best looks, designs are code, 258 ms is fast enough |
 | 2026-11-16 | Renderer inner loops are integer / fixed point | No FPU: soft-float per pixel took ~10 s, now 258 ms |
+| 2026-11-16 | BOOT: short press = next design (on release), hold 2 s = sleep; light sleep, not deep | Only GPIO0-5 can wake the C3 from deep sleep; BOOT is GPIO9. RST is hard-wired reset, not readable |
 
 ### Renderer vs SVG (renderer chosen)
 

@@ -1,4 +1,6 @@
 #include <Arduino_GFX_Library.h>
+#include <driver/gpio.h>
+#include <esp_sleep.h>
 #include "guards.h"
 
 // Pins from the vendor's Factory_samples_without_touch sketch (ESP32-2424S012). RST is not wired.
@@ -30,12 +32,38 @@ void setup() {
   show(0);
 }
 
+void waitRelease() {
+  while (digitalRead(PIN_BTN) == LOW) delay(10);
+  delay(50);  // debounce
+}
+
+// "Off": backlight and panel off, chip in light sleep until the button is pressed again.
+// Light, not deep, sleep because the C3 can only wake from deep sleep on GPIO0-5 and BOOT is GPIO9.
+void sleepUntilPress() {
+  digitalWrite(PIN_BL, LOW);
+  gfx->displayOff();  // panel sleep keeps its image, so no redraw on wake
+  waitRelease();      // otherwise the held button would wake us straight away
+  gpio_wakeup_enable((gpio_num_t)PIN_BTN, GPIO_INTR_LOW_LEVEL);
+  esp_sleep_enable_gpio_wakeup();
+  esp_light_sleep_start();
+  gpio_wakeup_disable((gpio_num_t)PIN_BTN);
+  gfx->displayOn();
+  digitalWrite(PIN_BL, HIGH);
+  waitRelease();  // the waking press shouldn't also switch designs
+}
+
 void loop() {
-  // shortcut: blocking debounce, fine until other work runs in loop()
+  // shortcut: blocking button handling, fine until other work runs in loop()
+  // Short press: next design (on release). Hold 2 s: sleep.
   if (digitalRead(PIN_BTN) == LOW) {
-    show(current + 1);
-    delay(300);
-    while (digitalRead(PIN_BTN) == LOW) delay(10);
+    unsigned long t = millis();
+    while (digitalRead(PIN_BTN) == LOW && millis() - t < 2000) delay(10);
+    if (millis() - t >= 2000) {
+      sleepUntilPress();
+    } else {
+      show(current + 1);
+      waitRelease();
+    }
   }
   if (Serial.available() && Serial.read() == 'n') show(current + 1);  // tools/drawtime.py steps guards this way
   // TODO: wireless switching (small web page) calls show() too.
