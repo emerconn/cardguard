@@ -7,9 +7,21 @@ Maker: Shenzhen Jingcai Intelligent (JCZN), sold as "Sunton" / "CYD" boards too.
 Each fact is tagged with its source (see [Sources](#sources)). **Measured** = checked on our board.
 Anything not tagged is unknown until measured.
 
-Vendor files kept in [`vendor/`](vendor/): [front outline drawing](vendor/outline-front.jpg),
-[back layout](vendor/layout-back.jpg), [schematic V1.0](vendor/schematic-v1.0.png),
-[datasheet](vendor/datasheet.pdf).
+Vendor files kept in [`vendor/`](vendor/) (all board-specific docs and images from the vendor package):
+
+| File | What |
+|---|---|
+| [outline-front.jpg](vendor/outline-front.jpg) | Front outline drawing with dimensions |
+| [layout-back.jpg](vendor/layout-back.jpg) | Labelled render of the back (buttons, switch, connectors) |
+| [schematic-v1.0.png](vendor/schematic-v1.0.png) | Board schematic V1.0 |
+| [datasheet.pdf](vendor/datasheet.pdf) | Board datasheet / specification (6 pages) |
+| [esp32-c3-mini-1-datasheet.pdf](vendor/esp32-c3-mini-1-datasheet.pdf) | Espressif ESP32-C3-MINI-1/1U module datasheet (module 13.2 x 12.5 x 2.4 mm) |
+| [getting-started.pdf](vendor/getting-started.pdf) | Vendor Arduino IDE getting-started manual (16 pages, no dimensions) |
+| [flash-tool-1..3.png](vendor/flash-tool-1.png) | Vendor screenshots for flashing the demo .bin with Espressif's Windows flash tool |
+| [unrelated-esp-rs-c3-board-pinout.jpg](vendor/unrelated-esp-rs-c3-board-pinout.jpg) | **Not our board**: filed under "Schematic" in the package, but it is the pinout of a different ESP32-C3 dev board (ESP-RS) |
+
+Left out of the package: demo sketches and LVGL/LovyanGFX libraries (code and library assets; our pinout
+came from `1_2_Factory_samples_without_touch`), Espressif flash-tool manuals, and Windows utilities.
 
 ## Variants
 
@@ -70,14 +82,15 @@ From the datasheet's "Product Size" drawing [DS] (front view, mm):
 | | mm | Source |
 |---|---|---|
 | PCB | **Ø 37.00** circle | [DS] |
-| USB tab | **14.23** wide, sticks out **3.74** below the circle (bottom) | [DS] |
+| USB tab | **14.23** wide, **3.74** long from where its straight sides start; reaches **1.5** past the circle's lowest point (38.5 - 37) | [DS] |
 | Overall | 37.00 wide x **38.50** tall (circle + tab) | [DS] |
 | Visible display area | **Ø 32.4** | [DS] |
-| Display glass outer diameter | ? (drawing shows it slightly smaller than the PCB) | to measure |
+| Display glass outer diameter | **Ø 36.70** (measured), ~centred on the PCB, ≤ 0.5 offset | measured |
 | Weight | ~20 g | [DS] |
 | Case version | ~Ø 42 (vendor shell) | [CNX] |
 | Mounting holes | none shown or mentioned | [DS], [CNX] |
 | REST / BOOT buttons | TS-4.2x3.2x2.5 tact switches: body 4.2 x 3.2 mm, 2.5 mm tall | [SCH] |
+| ESP32-C3-MINI-1U module (back) | 13.2 x 12.5 x 2.4 mm | ESP32-C3-MINI-1 datasheet in the vendor package |
 
 Back side (components side), from the datasheet's labelled render [DS], USB tab at the bottom:
 
@@ -102,25 +115,61 @@ the tab centred), so treat these as **±1-2 mm** until measured. Back view, from
 
 | Part | x mm | y mm |
 |---|---|---|
-| REST button | -12 | -11 |
-| BOOT button | +12 | -11 |
+| REST button | -12.0 (measured) | -9.9 (measured) |
+| BOOT button | +12.0 (measured) | -9.9 (measured) |
 | Power switch lever (side edge) | +17.4 (edge) | -1.5 |
 | SH1.0-4P header | -12.6 | +9.7 |
 | JST1.25 battery | +12.2 | +8.1 |
 | USB-C | 0 (centred on tab, per [DS]) | +15.5 |
 
-## To measure (calipers) before designing the case
+## Measured (calipers, our board)
 
-Not published anywhere; needed for a case that fits:
+| # | What | mm |
+|---|---|---|
+| 1a | Total thickness: screen glass front to highest back part, the JST1.25 battery connector (between USB-C and the power switch) | 7.70 |
+| 1b | Screen glass front to bare PCB back | 3.20 |
+| 1c | PCB alone (at the USB tab) | 1.20 |
+| = | Display stack, glass front to PCB front (1b - 1c) | 2.00 |
+| = | Tallest back part above the PCB back (1a - 1b) | 4.50 |
+| 2a/2b | Screen glass diameter (round) | 36.70 |
+| 2c | Glass offset from PCB centre: not measurable, visually near centred; allow up to ~0.5 (part tolerance) | ≤ 0.5 |
+| 3a | REST/BOOT bases, outer edge to outer edge | 27.50 |
+| 3b | REST/BOOT bases, inner edge to inner edge | 20.60 |
+| = | Button centres apart ((3a + 3b) / 2); each ~12.0 from the PCB centre if symmetric | 24.05 |
+| = | Base width left-right ((3a - 3b) / 2) | 3.45 |
+| 3d | Button height above the PCB back (plunger top) | 2.50 |
+| 3c | USB tab bottom edge to the far (top) edge of a button base | 32.00 |
+| = | Button centre from the PCB circle centre, towards the top: 3c - 20.0 (circle centre to tab bottom = 38.5 - 18.5) - ~2.1 (half the ~4.2 base length) | ~9.9 |
+| 3e | Plunger oval: 3.0 long, running towards the USB tab (the direction the cable plugs in), x 2.2 left-right | 3.0 x 2.2 |
+| 4a | USB-C shell width (sits flush on the PCB back) | 8.80 |
+| 4b | USB-C shell top above the PCB back (depth rod) | 3.00 |
+| = | USB-C shell spans 3.2 to 6.2 from the screen glass front (1b + 4b); opening centre ~4.7 | |
+| 4c | USB-C shell face vs the tab edge | flush |
+| 4d | Plug: various cables will be used, so the case gets a ~1 mm wall at the port plus an outer relief pocket ~13 x 7.5 (typical USB-C overmolds are up to ~12.5 x 7, general figure, not measured) | design |
+| 5a | Power switch housing: USB tab bottom edge to the housing's far (top) edge | 22.00 |
+| 5b | Switch housing length along the edge | 4.60 |
+| 5b | Lever: width along the edge x thickness, centred on the housing | ~2.0 x 1.0 |
+| 5b | Lever sticks out past the PCB edge: at rest / pressed in | 0.70 / 0.40 |
+| 5d | Lever travel (0.7 - 0.4) | 0.30 |
+| N2 | Display FPC wrap at the USB tab: sticks out past the PCB edge (case leaves ~0.7 clearance) | ≤ 0.5 |
+| L | Overall length, circle edge across to the tab end, including the FPC wrap (datasheet 38.5 is PCB only; +0.5 FPC) | 39.00 |
+| N3 | Thickness where the FPC wraps the tab end: same as the rest (1b) | ≈ 3.2 |
 
-1. Total thickness: display glass front to tallest part on the back (probably the module or USB-C).
-2. PCB thickness, and display glass thickness (glass front to PCB front).
-3. Display glass outer diameter, and whether it is centred on the PCB circle.
-4. REST and BOOT button centres: distance from the PCB centre (x, y), button cap size, and height above the PCB.
-5. Power switch: position along the edge (angle or distance from the USB tab), lever size, how far it sticks out, travel.
-6. USB-C: height of the port centre above the PCB back, opening width x height, how far it sits from the tab edge.
-7. Clearance for the USB plug's overmold (measure the cable you use).
-8. Whether a battery will be fitted (adds depth; JST 1.25 connector height on the back).
+Measurements 3c and 5a were taken from the bare PCB tab end (not the FPC), so positions from the PCB circle
+centre use circle centre = 20.0 from the tab end.
+| 5c | PCB back surface to the top of the lever (assumed measured from the component side) | 2.50 |
+| = | Lever centre: 19.7 from the tab bottom edge (0.3 towards the tab from the PCB circle centre); 2.0 above the PCB back = 5.2 from the screen glass front | |
+| 6a | SH1.0-4P serial header height above the PCB back | 4.10 |
+| 6b | JST1.25 battery connector (mounted at an angle): USB tab bottom edge to its farthest corner | 15.50 |
+
+At the USB tab the screen glass is cut flat and the display's flex cable (FPC) wraps around the board
+edge to the back ([photo](photos/front-fpc-notch.png), tab on the left; green tab = screen protector pull
+tab). The case wall must follow this flat and leave clearance for the FPC bend, which is fragile.
+
+## Still unmeasured
+
+Everything the first case needs is measured (2026-11-16). Not measured, not needed yet: battery size and
+placement (later case version), and exact glass offset (≤ 0.5, absorbed by the front lip overlap).
 
 ## Sources
 
