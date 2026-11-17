@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
-"""Convert a TTF into an Adafruit GFXfont header (1-bit glyphs, ' '..'Z') using ImageMagick.
+"""Convert a TTF into an Adafruit GFXfont header (1-bit glyphs) using ImageMagick.
 
 Usage: python3 tools/ttf2gfx.py /usr/share/fonts/liberation/LiberationSans-Bold.ttf 20 TitleFont [CHARS] > src/fonts.h
-Only space, digits and capitals are included (or just CHARS, if given), to keep the font small.
+Only space, digits and capitals are included, or exactly CHARS if given, to keep the font small.
 """
 import subprocess, sys
 
 ttf, size, name = sys.argv[1], int(sys.argv[2]), sys.argv[3]
 keep = set(sys.argv[4]) if len(sys.argv) > 4 else None
-FIRST, LAST = 0x20, 0x5A
+FIRST, LAST = 0x20, max(0x5A if keep is None else 0x20, *(ord(c) for c in keep or ()))
 PAD = size * 2  # pen position inside the scratch canvas
 
 
@@ -30,7 +30,7 @@ def glyph(ch):
 bitmap, glyphs = [], []
 for code in range(FIRST, LAST + 1):
     ch = chr(code)
-    if not (ch == " " or ch.isupper() or ch.isdigit()) or (keep and ch not in keep):
+    if not (ch in keep if keep else ch == " " or ch.isupper() or ch.isdigit()):
         glyphs.append((len(bitmap), 0, 0, 0, 0, 0))
         continue
     adv, w, h, xo, yo, px = glyph(ch)

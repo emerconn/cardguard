@@ -17,6 +17,15 @@ Preview every guard on the PC, using the real Arduino_GFX drawing code:
 tools/preview/run.sh   # writes preview/guard_N.png
 ```
 
+Time every guard on the real board (needs the current firmware flashed, no serial monitor open):
+
+```sh
+python3 tools/drawtime.py   # resets the board, then sends 'n' over serial to step through guards
+```
+
+Text uses fonts generated into `src/fonts.h`. When a design needs a new character, add it to the
+lists in `tools/fonts.sh` and run it.
+
 ## Hardware budget
 
 ESP32-C3: 4 MB flash, ~320 KB RAM for the program, no FPU, no PSRAM.

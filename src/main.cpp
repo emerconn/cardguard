@@ -37,5 +37,6 @@ void loop() {
     delay(300);
     while (digitalRead(PIN_BTN) == LOW) delay(10);
   }
+  if (Serial.available() && Serial.read() == 'n') show(current + 1);  // tools/drawtime.py steps guards this way
   // TODO: wireless switching (small web page) calls show() too.
 }

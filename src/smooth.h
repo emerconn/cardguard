@@ -148,14 +148,23 @@ struct Smooth {
     float s0 = sinf(a0 * DEG_TO_RAD), c0 = cosf(a0 * DEG_TO_RAD), s1 = sinf(a1 * DEG_TO_RAD), c1 = cosf(a1 * DEG_TO_RAD);
     // Squared-distance limits of the band in doubled pixel units, so most of the box is rejected with ints.
     int32_t in = max(0.0f, 2 * (r - width / 2) - 1), out = 2 * (r + width / 2) + 1, cx2 = lroundf(2 * cx), cy2 = lroundf(2 * cy);
-    in *= in, out *= out;
+    int32_t fin = 2 * (r - width / 2) + 1, fout = max(0.0f, 2 * (r + width / 2) - 1);  // fully inside between these
+    in *= in, out *= out, fin *= fin, fout *= fout;
+    // Angle limits as 12-bit fixed-point directions, so the side test is integer too.
+    int32_t S0 = s0 * 4096, C0 = c0 * 4096, S1 = s1 * 4096, C1 = c1 * 4096;
+    float ri = r - width / 2, ro = r + width / 2;
     for (int y = rowLo(lo); y < rowHi(hi); y++)
       for (int x = floorf(l); x <= ceilf(rr); x++) {
         int32_t X = 2 * x + 1 - cx2, Y = 2 * y + 1 - cy2, D = X * X + Y * Y;
         if (D <= in || D >= out) continue;
-        float dx = x + 0.5f - cx, dy = y + 0.5f - cy;
-        if (c0 * dy - s0 * dx < 0 || dx * s1 - dy * c1 < 0) continue;  // outside a0..a1
-        plot(x, y, cover(fabsf(hypotf(dx, dy) - r) - width / 2), c);
+        if (C0 * Y - S0 * X < 0 || X * S1 - Y * C1 < 0) continue;  // outside a0..a1
+        if (D > fin && D < fout) {
+          plot(x, y, 32, c);
+          continue;
+        }
+        // Edge pixels only: distance to each edge radius e is ~= (|p|^2 - e^2) / 2e near that edge.
+        float q = D / 4.0f;
+        plot(x, y, cover(max((q - ro * ro) / (2 * ro), ri > 0 ? (ri * ri - q) / (2 * ri) : -1e9f)), c);
       }
   }
 
@@ -211,16 +220,18 @@ struct Smooth {
     }
   }
 
-  // Text along a circle of radius r around the screen centre, centred on angle deg, reading clockwise.
-  void arcText(const GFXfont *f, float scale, const char *str, float r, float deg, float spacing, uint16_t c) {
-    float len = 0;
+  // Text along a circle of radius r around the screen centre, centred on angle deg.
+  // Top text reads clockwise; bottom = true reads counter-clockwise so it stays upright.
+  void arcText(const GFXfont *f, float scale, const char *str, float r, float deg, float spacing, uint16_t c,
+               bool bottom = false) {
+    float len = 0, dir = bottom ? -1 : 1;
     for (const char *p = str; *p; p++) len += advance(f, scale, *p) + spacing;
-    float a = deg - (len - spacing) / 2 / r * RAD_TO_DEG;
+    float a = deg - dir * (len - spacing) / 2 / r * RAD_TO_DEG;
     for (; *str; str++) {
-      float half = advance(f, scale, *str) / 2 / r * RAD_TO_DEG;
+      float half = dir * advance(f, scale, *str) / 2 / r * RAD_TO_DEG;
       a += half;
-      glyph(f, scale, *str, 120 + r * cosf(a * DEG_TO_RAD), 120 + r * sinf(a * DEG_TO_RAD), a + 90, c);
-      a += half + spacing / r * RAD_TO_DEG;
+      glyph(f, scale, *str, 120 + r * cosf(a * DEG_TO_RAD), 120 + r * sinf(a * DEG_TO_RAD), a + 90 * dir, c);
+      a += half + dir * spacing / r * RAD_TO_DEG;
     }
   }
 };

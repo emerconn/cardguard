@@ -27,6 +27,7 @@ static void club(Smooth &s, float x, float y, uint16_t c) {
   s.circle(x, y - 4.5f, 4, c);
   s.circle(x - 4.6f, y + 1.5f, 4, c);
   s.circle(x + 4.6f, y + 1.5f, 4, c);
+  s.circle(x, y, 2.5f, c);  // fills the gap where the three lobes meet
   s.tri(x, y, x - 3, y + 9, x + 3, y + 9, c);
 }
 static void diamond(Smooth &s, float x, float y, uint16_t c) {
@@ -80,5 +81,70 @@ static void chipLeaderScene(Smooth &s) {
 
 static void chipLeader(Arduino_GFX *gfx) { smoothDraw(gfx, chipLeaderScene); }
 
-const GuardFn GUARDS[] = {chipLeader};
+static const uint16_t CREAM = RGB565(244, 238, 222);
+static const uint16_t DUCK = RGB565(250, 204, 60);
+static const uint16_t DUCK_D = RGB565(196, 132, 20);
+static const uint16_t BEAK = RGB565(240, 124, 24);
+
+// A cartoon duck facing left, body centred on (x, y), about 44 x 36 px.
+// Drawn twice: a slightly grown dark pass for the outline, then the fill.
+static void duck(Smooth &s, float x, float y, float k) {
+  for (int pass = 0; pass < 2; pass++) {
+    float g = pass ? 0 : 1.3f;
+    uint16_t c = pass ? DUCK : DUCK_D;
+    s.tri(x + 12 * k - g, y + 2 * k + g, x + 23 * k + g, y - 7 * k - g, x + 19 * k + g, y + 9 * k + g, c);  // tail
+    s.ellipse(x + 2 * k, y + 6 * k, 18 * k + g, 10.5f * k + g, -8, c);                             // body
+    s.ellipse(x - 7 * k, y - 3 * k, 6 * k + g, 8 * k + g, 15, c);                                  // neck
+    s.circle(x - 9 * k, y - 12 * k, 8.5f * k + g, c);                                          // head
+    s.ellipse(x - 19.5f * k, y - 9.5f * k, 6.5f * k + g, 2.8f * k + g, 12, pass ? BEAK : DUCK_D);  // beak
+  }
+  s.ellipse(x + 5 * k, y + 4 * k, 10 * k, 5.5f * k, -18, DUCK_D);  // wing
+  s.ellipse(x + 5 * k, y + 3.5f * k, 8.6f * k, 4.2f * k, -18, DUCK);
+  s.circle(x - 10 * k, y - 14 * k, 2.8f * k, PAPER);  // eye
+  s.circle(x - 11 * k, y - 14 * k, 1.5f * k, INK);
+}
+
+static void ducksScene(Smooth &s) {
+  s.fill(RGB565_BLACK);
+  s.circle(120, 120, 119.5f, GOLD_L, GOLD_D, 112);
+  s.circle(120, 120, 112, CREAM, CREAM, 84);
+
+  // Black banners with gold edges across the top and bottom of the band.
+  for (int bottom = 0; bottom < 2; bottom++) {
+    float a0 = bottom ? 38 : -142, a1 = bottom ? 142 : -38;
+    s.arc(120, 120, 98, 30, a0, a1, GOLD);
+    s.arc(120, 120, 98, 25, a0 + 1.5f, a1 - 1.5f, INK);
+  }
+  s.arcText(&TitleFont4x, 0.25f, "THE DUCKS", 98, -90, 2.5f, GOLD);
+  s.arcText(&TitleFont4x, 0.25f, "QUACK QUACK", 98, 90, 2.5f, GOLD, true);
+
+  // Suits down each side of the band: club, diamond, spade, heart from top to bottom.
+  const float side[] = {-24, -8, 8, 24};
+  for (int i = 0; i < 4; i++)
+    for (int left = 0; left < 2; left++) {
+      float a = (left ? 180 - side[i] : side[i]) * DEG_TO_RAD, x = 120 + 98 * cosf(a), y = 120 + 98 * sinf(a);
+      if (i == 0) club(s, x, y, INK);
+      if (i == 1) diamond(s, x, y, RED);
+      if (i == 2) spade(s, x, y, INK);
+      if (i == 3) heart(s, x, y, RED);
+    }
+
+  // Gold ring with a twisted-rope inner edge around the black centre.
+  s.circle(120, 120, 85, GOLD_L, GOLD_D, 80);
+  s.circle(120, 120, 80, GOLD_D);
+  for (int i = 0; i < 48; i++) {
+    float a = i * 7.5f, t = a * DEG_TO_RAD;
+    s.ellipse(120 + 77 * cosf(t), 120 + 77 * sinf(t), 4.2f, 1.9f, a + 90 + 50, GOLD_L);
+  }
+  s.circle(120, 120, 73, INK);
+
+  s.text(&PokerFont4x, 0.14f, "HOLD'EM", 120, 76, GOLD);
+  duck(s, 92, 121, 1.15f);
+  duck(s, 149, 121, 1.15f);
+  s.text(&PokerFont4x, 0.17f, "POCKET 2s", 120, 166, GOLD);
+}
+
+static void ducks(Arduino_GFX *gfx) { smoothDraw(gfx, ducksScene); }
+
+const GuardFn GUARDS[] = {chipLeader, ducks};
 const int GUARD_COUNT = sizeof(GUARDS) / sizeof(GUARDS[0]);
