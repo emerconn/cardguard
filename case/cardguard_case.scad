@@ -63,7 +63,7 @@ lid_t = 2.0;
 step_w = 0.8;           // stepped rim: ledge cut into the shell wall's top edge, the lid's flange rests on it
 step_h = 0.8;           // (holds the lid up all round, so pressing near an edge can't tip it)
 fit = 0.05;             // lid edge to shell wall, each side (0.1 printed loose; raise if too tight to push in)
-press_gap = 0.1;        // lid posts to the module / USB tops (0 = touching)
+press_gap = 0.2;        // lid posts to the module / USB tops (0 = touching; 0.1 rocked slightly on the posts)
 btn_hole_extra = 0.6;   // button hole over the plunger, total
 plug = [11, 6.6];       // USB opening, sized for a plug overmold so most cables seat fully;
                         // wider cuts through the case corner, since the port is off-centre

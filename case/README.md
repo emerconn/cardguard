@@ -42,6 +42,6 @@ openscad -D 'part="section"' -D section_x=12 ...   # 2D slice through x = 12 (BO
 |---|---|
 | Board tight / loose in the pocket | `clear` (0.25 per side) |
 | Lid too tight / falls out | `fit` (0.05 per side; 0.1 was loose on the first print) |
-| Board rattles front-to-back | lower `press_gap` (0.1) to 0 |
+| Board rattles front-to-back | lower `press_gap` (0.2; 0.1 made the lid rock on the posts) |
 | Lid won't seat (posts hit first) | raise `press_gap` |
 | Pin holes miss the buttons | `btn_x`, `btn_y` |
