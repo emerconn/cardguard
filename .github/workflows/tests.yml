@@ -1,19 +1,40 @@
-# Runs on every pull request into main; the main ruleset requires it to pass before merging, so main
-# stays tested. Page tests need no dependencies. The hardware smoke test (test/hardware/) needs the
+# Runs on every pull request into main; the main ruleset requires its jobs to pass before merging, so
+# main stays tested. Page tests need no dependencies. The hardware smoke test (test/hardware/) needs the
 # board, so it runs locally after flashing, not here.
 name: Tests
 
 on:
   pull_request:
     branches: [main]
+    types: [opened, edited, synchronize, reopened]  # edited: fixing a PR title reruns pr-title
   workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  phone-page:  # the job id is also the check name the main ruleset requires
+  phone-page:  # job ids are the check names the main ruleset requires
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
       - run: node --test
+
+  # Squash merges make the PR title the commit on main, so this keeps main's history conventional.
+  pr-title:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          TITLE: ${{ github.event.pull_request.title }}  # via env, never inlined: a title could carry shell code
+        run: |
+          types='feat|fix|perf|refactor|test|ci|build|docs|style|chore|revert'
+          scopes='ble|display|guards|power|page|case|fonts|tools|tests'
+          if printf '%s' "$TITLE" | grep -Eq "^($types)(\(($scopes)\))?!?: [^ ].*"; then
+            echo "ok: $TITLE"
+          else
+            echo "::error::PR title must be a Conventional Commit: type(scope): summary"
+            echo "types:  ${types//|/, }"
+            echo "scopes: ${scopes//|/, } (optional)"
+            echo "got:    $TITLE"
+            exit 1
+          fi
