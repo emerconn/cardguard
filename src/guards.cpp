@@ -192,55 +192,55 @@ static const uint16_t CARD_EDGE = RGB565(110, 110, 110);
 
 typedef void (*SuitFn)(Smooth &, float, float, uint16_t, float, float);
 
-// A 50 x 70 court card centred on (cx, cy), rotated by deg: corner indices plus a simple
-// king (crown, beard) or jack (feathered hat) figure in a frame of the suit's colour.
+// A 55 x 77 court card centred on (cx, cy), rotated by deg: a top-left index plus a simple
+// king (crown, beard) or jack (feathered hat) figure in a frame of the suit's colour, which takes
+// the rest of the card.
 static void courtCard(Smooth &s, float cx, float cy, float deg, char rank, SuitFn suit, uint16_t col) {
-  float sn = sinf(deg * DEG_TO_RAD), co = cosf(deg * DEG_TO_RAD);
-  auto X = [&](float lx, float ly) { return cx + lx * co - ly * sn; };  // card space -> screen
-  auto Y = [&](float lx, float ly) { return cy + lx * sn + ly * co; };
-  auto quad = [&](float x0, float y0, float x1, float y1, float x2, float y2, float x3, float y3, uint16_t c) {
-    float p[] = {X(x0, y0), Y(x0, y0), X(x1, y1), Y(x1, y1), X(x2, y2), Y(x2, y2), X(x3, y3), Y(x3, y3)};
-    s.poly(p, 4, c);
+  Place c(cx, cy, 1.1f, deg);                                    // card space: 50 x 70 before scaling
+  Place f(c.x(4.25f, 2.7f), c.y(4.25f, 2.7f), c.k * 1.3f, deg);  // figure space, centred in the frame
+  auto quad = [&](float x0, float y0, float x1, float y1, float x2, float y2, float x3, float y3, uint16_t col) {
+    float p[] = {f.x(x0, y0), f.y(x0, y0), f.x(x1, y1), f.y(x1, y1), f.x(x2, y2), f.y(x2, y2), f.x(x3, y3), f.y(x3, y3)};
+    s.poly(p, 4, col);
   };
-  auto tri = [&](float x0, float y0, float x1, float y1, float x2, float y2, uint16_t c) {
-    s.tri(X(x0, y0), Y(x0, y0), X(x1, y1), Y(x1, y1), X(x2, y2), Y(x2, y2), c);
+  auto tri = [&](float x0, float y0, float x1, float y1, float x2, float y2, uint16_t col) {
+    s.tri(f.x(x0, y0), f.y(x0, y0), f.x(x1, y1), f.y(x1, y1), f.x(x2, y2), f.y(x2, y2), col);
   };
+  auto circle = [&](float x, float y, float r, uint16_t col) { s.circle(f.x(x, y), f.y(x, y), r * f.k, col); };
 
-  s.rrect(cx, cy, 52.5f, 72.5f, 5, deg, CARD_EDGE);
-  s.rrect(cx, cy, 50, 70, 4, deg, PAPER);
-  s.rrect(cx, cy, 31, 47, 2, deg, col);  // figure frame
-  s.rrect(cx, cy, 28, 44, 1.5f, deg, PAPER);
+  s.rrect(cx, cy, 52.5f * c.k, 72.5f * c.k, 5, deg, CARD_EDGE);
+  s.rrect(cx, cy, 50 * c.k, 70 * c.k, 4, deg, PAPER);
+  // Figure frame: right of the index column, 3.5 from the other edges.
+  s.rrect(c.x(4.25f, 0), c.y(4.25f, 0), 34.5f * c.k, 63 * c.k, 2, deg, col);
+  s.rrect(c.x(4.25f, 0), c.y(4.25f, 0), 31.5f * c.k, 60 * c.k, 1.5f, deg, PAPER);
 
   quad(-11, 21, 11, 21, 8, 4, -8, 4, col);  // robe with a gold sash
   quad(-2.5f, 21, 2.5f, 21, 1.5f, 4, -1.5f, 4, GOLD);
   if (rank == 'K') {
-    s.circle(X(0, -1), Y(0, -1), 5.5f, HAIR);  // beard
-    s.circle(X(0, -5), Y(0, -5), 5.5f, SKIN);
+    circle(0, -1, 5.5f, HAIR);  // beard
+    circle(0, -5, 5.5f, SKIN);
     quad(-6, -9, 6, -9, 6, -12.5f, -6, -12.5f, GOLD);  // crown
     tri(-6, -12.5f, -2, -12.5f, -5.5f, -18.5f, GOLD);
     tri(-2, -12.5f, 2, -12.5f, 0, -19.5f, GOLD);
     tri(2, -12.5f, 6, -12.5f, 5.5f, -18.5f, GOLD);
   } else {
-    s.circle(X(-5, -6), Y(-5, -6), 2.6f, HAIR);
-    s.circle(X(5, -6), Y(5, -6), 2.6f, HAIR);
-    s.circle(X(0, -5), Y(0, -5), 5.5f, SKIN);
-    s.ellipse(X(0, -11), Y(0, -11), 8, 3.4f, deg, RED);  // hat with a feather
+    circle(-5, -6, 2.6f, HAIR);
+    circle(5, -6, 2.6f, HAIR);
+    circle(0, -5, 5.5f, SKIN);
+    s.ellipse(f.x(0, -11), f.y(0, -11), 8 * f.k, 3.4f * f.k, deg, RED);  // hat with a feather
     tri(3, -12, 10, -20, 7, -10.5f, GOLD);
   }
-  s.circle(X(-2, -5.5f), Y(-2, -5.5f), 0.9f, INK);  // eyes
-  s.circle(X(2, -5.5f), Y(2, -5.5f), 0.9f, INK);
+  circle(-2, -5.5f, 0.9f, INK);  // eyes
+  circle(2, -5.5f, 0.9f, INK);
 
-  // Corner indices: rank over a small suit, top-left and (upside down) bottom-right.
-  for (int f = -1; f <= 1; f += 2) {
-    s.glyph(CARD_INDEX.font, CARD_INDEX.scale, rank, X(19 * f, 26 * f), Y(19 * f, 26 * f), deg + (f > 0 ? 180 : 0), col);
-    suit(s, X(19 * f, 16 * f), Y(19 * f, 16 * f), col, 0.42f, deg + (f > 0 ? 180 : 0));
-  }
+  // Top-left index only: rank over a small suit.
+  s.glyph(CARD_INDEX.font, CARD_INDEX.scale, rank, c.x(-19, -26), c.y(-19, -26), deg, col);
+  suit(s, c.x(-19, -16), c.y(-19, -16), col, 0.42f, deg);
 }
 
 static void jackKingOffScene(Smooth &s) {
   bannerFrame(s, BAND, "I LOVE", BAND_LONG, "JACK KING OFF");
-  courtCard(s, 99, 122, -10, 'J', spade, INK);
-  courtCard(s, 141, 118, 8, 'K', heart, RED);
+  courtCard(s, 96, 122, -10, 'J', spade, INK);
+  courtCard(s, 144, 118, 8, 'K', heart, RED);
 }
 
 static void jackKingOff(Arduino_GFX *gfx) { smoothDraw(gfx, jackKingOffScene); }
