@@ -36,7 +36,7 @@ python3 tools/drawtime.py   # resets the board, then sends 'n' over serial to st
 
 Pick a guard from a phone over Bluetooth LE: in nRF Connect (iOS/Android) connect to `cardguard`,
 open the service `9a49e65d-…` and write to characteristic `6eeb6fbb-…` the guard number as Text
-(`2`) or as a byte (`02`). Numbers past the last guard are ignored (only the button wraps). Only while the screen is on; light sleep drops Bluetooth.
+(`2`) or as a byte (`02`). Numbers past the last guard show "NO GUARD n" for 1.5 s and are logged to serial (only the button wraps). Only while the screen is on; light sleep drops Bluetooth.
 
 Text uses fonts generated into `src/fonts.h`. When a design needs a new character, add it to the
 lists in `tools/fonts.sh` and run it.
@@ -65,6 +65,7 @@ Target: **~20 designs**, each a crisp digital (vector-style) design, not a photo
 | 2026-11-16 | `Serial.setTxTimeoutMs(0)` | With no serial monitor open, each print blocked ~2 s once the USB buffer filled, freezing the button |
 | 2026-11-16 | Shared `TextStyle`s in `guards.cpp`; serif only at large sizes | Small serif text rendered blurry; one set of fonts and sizes keeps designs consistent |
 | 2026-11-17 | BLE guard select via NimBLE-Arduino, one write-only characteristic; test with nRF Connect before any app | Lighter than the stock BLE stack (+~250 KB flash total, 657 KB used); same firmware serves a later Bluefy page or iOS app |
+| 2026-11-17 | Invalid BLE pick: serial log line + 1.5 s red "NO GUARD n" screen, then back to the current guard; new shared style `BIG_NUMBER` | Phone gets no reply, so the screen must show the mistake; the button still wraps since it has no specific input |
 
 ### Renderer vs SVG (renderer chosen)
 

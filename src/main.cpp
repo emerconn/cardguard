@@ -24,7 +24,7 @@ struct SelectCallbacks : NimBLECharacteristicCallbacks {
     std::string v = c->getValue();
     if (v.empty()) return;
     int n = isdigit((unsigned char)v[0]) ? atoi(v.c_str()) : (uint8_t)v[0];
-    if (n < GUARD_COUNT) requested = n;  // a specific pick past the end is ignored; only the button wraps
+    requested = n;  // checked in loop(): a pick past the end shows an error, only the button wraps
   }
 };
 
@@ -91,7 +91,16 @@ void loop() {
   }
   if (Serial.available() && Serial.read() == 'n') show(current + 1);  // tools/drawtime.py steps guards this way
   if (requested >= 0) {
-    show(requested);
+    int n = requested;
     requested = -1;
+    if (n < GUARD_COUNT) {
+      Serial.printf("BLE: picked guard %d\n", n);
+      show(n);
+    } else {
+      Serial.printf("BLE: no guard %d (valid 0-%d), keeping guard %d\n", n, GUARD_COUNT - 1, current);
+      drawNoGuard(gfx, n);
+      delay(1500);  // shortcut: blocks the button for 1.5 s, fine for a rare error
+      show(current);
+    }
   }
 }

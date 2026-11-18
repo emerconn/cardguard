@@ -10,18 +10,25 @@ struct Canvas : Arduino_GFX {
   void writePixelPreclipped(int16_t x, int16_t y, uint16_t c) override { px[y * 240 + x] = c; }
 };
 
+static void save(const Canvas &c, const char *name) {
+  FILE *f = fopen(name, "wb");
+  fprintf(f, "P6 240 240 255\n");
+  for (uint16_t p : c.px) {
+    uint8_t rgb[3] = {uint8_t((p >> 11) << 3), uint8_t(((p >> 5) & 63) << 2), uint8_t((p & 31) << 3)};
+    fwrite(rgb, 1, 3, f);
+  }
+  fclose(f);
+}
+
 int main() {
   for (int g = 0; g < GUARD_COUNT; g++) {
     Canvas c;
     GUARDS[g](&c);
     char name[64];
     snprintf(name, sizeof name, "preview/guard_%d.ppm", g);
-    FILE *f = fopen(name, "wb");
-    fprintf(f, "P6 240 240 255\n");
-    for (uint16_t p : c.px) {
-      uint8_t rgb[3] = {uint8_t((p >> 11) << 3), uint8_t(((p >> 5) & 63) << 2), uint8_t((p & 31) << 3)};
-      fwrite(rgb, 1, 3, f);
-    }
-    fclose(f);
+    save(c, name);
   }
+  Canvas c;
+  drawNoGuard(&c, 5);
+  save(c, "preview/no_guard.ppm");
 }
