@@ -215,14 +215,17 @@ struct Smooth {
       for (int x = floorf(l); x <= ceilf(rr); x++) {
         int32_t X = 2 * x + 1 - cx2, Y = 2 * y + 1 - cy2, D = X * X + Y * Y;
         if (D <= in || D >= out) continue;
-        if (C0 * Y - S0 * X < 0 || X * S1 - Y * C1 < 0) continue;  // outside a0..a1
-        if (D > fin && D < fout) {
+        // Distance inside each end ray, in 1/8192 px (doubled coords x 4096); feather the ends over a pixel.
+        int32_t A0 = C0 * Y - S0 * X, A1 = X * S1 - Y * C1;
+        if (A0 <= -4096 || A1 <= -4096) continue;  // over half a pixel outside a0..a1
+        if (D > fin && D < fout && A0 >= 4096 && A1 >= 4096) {
           plot(x, y, 32, c);
           continue;
         }
         // Edge pixels only: distance to each edge radius e is ~= (|p|^2 - e^2) / 2e near that edge.
         int32_t dOut = ((int64_t)(D - ro4) * kOut) >> 16, dIn = ri > 0 ? ((int64_t)(ri4 - D) * kIn) >> 16 : INT32_MIN;
-        plot(x, y, coverFx(max(dOut, dIn)), c);
+        int32_t dEnd = -8 * min(A0, A1);  // to 16.16 px, positive outside
+        plot(x, y, coverFx(max(max(dOut, dIn), dEnd)), c);
       }
   }
 
