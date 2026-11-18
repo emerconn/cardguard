@@ -13,19 +13,15 @@ permissions:
   contents: read
 
 jobs:
-  web-app:  # job ids are the check names the main ruleset requires
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - run: node --test
-
-  # Does the PR touch Rust? A required job skipped by `if` counts as passed, so docs/page PRs skip firmware.
-  rust-changed:
+  # Which parts does the PR touch? A required job skipped by `if` counts as passed, so each test job runs
+  # only for its own files. Any failure here leaves the outputs empty, and then every job runs.
+  changes:  # job ids are the check names the main ruleset requires
     runs-on: ubuntu-latest
     permissions:
       pull-requests: read
     outputs:
       rust: ${{ steps.diff.outputs.rust }}
+      web: ${{ steps.diff.outputs.web }}
     steps:
       - id: diff
         if: github.event_name == 'pull_request'
@@ -33,17 +29,23 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           PR: ${{ github.event.pull_request.number }}
         run: |
-          files=$(gh pr diff "$PR" --repo "$GITHUB_REPOSITORY" --name-only)  # a failure here fails the step: firmware still runs
-          if grep -qE '^(firmware|guards)/|^\.github/workflows/tests\.yml$' <<< "$files"; then
-            echo rust=true >> "$GITHUB_OUTPUT"
-          else
-            echo rust=false >> "$GITHUB_OUTPUT"
-          fi
+          files=$(gh pr diff "$PR" --repo "$GITHUB_REPOSITORY" --name-only)
+          touches() { grep -qE "$1|^\.github/workflows/tests\.yml$" <<< "$files" && echo true || echo false; }
+          echo "rust=$(touches '^(firmware|guards)/')" >> "$GITHUB_OUTPUT"
+          echo "web=$(touches '^(docs/app|test)/')" >> "$GITHUB_OUTPUT"
+
+  web-app:
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.web != 'false' }}  # skip only on a clear "not touched"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: node --test
 
   # Renderer tests on the PC, and the firmware must compile. Running it needs the board (smoke.py, locally).
   firmware:
-    needs: rust-changed
-    if: ${{ !cancelled() && needs.rust-changed.outputs.rust != 'false' }}  # skip only on a clear "no Rust changed"
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.rust != 'false' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
