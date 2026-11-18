@@ -81,6 +81,8 @@ async def main():
         return
     async with BleakClient(device) as c:
         await c.start_notify(LOG, lambda _, data: ble_lines.append(data.decode(errors="replace")))
+        guard_updates = []  # as text, so wait_for can match them
+        await c.start_notify(SELECT, lambda _, data: guard_updates.append(str(data[0])))
         check("log subscribe is logged", await wait_for(ble_lines, r"subscribed to the log", 3))
 
         names = (await c.read_gatt_char(NAMES)).decode().split("\n")
@@ -91,6 +93,10 @@ async def main():
         await c.write_gatt_char(SELECT, bytes([last]), response=True)
         check(f"valid pick draws guard {last}", await wait_for(serial_lines, rf"guard {last} drawn in \d+ ms", 3))
         check("pick arrives in the BLE log", await wait_for(ble_lines, rf"picked guard {last}", 3))
+        # notified right after the "drawn" serial line, so it can trail it a little
+        check("guard change is notified", await wait_for(guard_updates, rf"^{last}$", 2), guard_updates)
+        current = (await c.read_gatt_char(SELECT))[0]
+        check("current guard reads back", current == last, current)
 
         serial_lines.clear()
         await c.write_gatt_char(SELECT, bytes([len(names)]), response=True)

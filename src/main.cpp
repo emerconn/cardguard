@@ -19,6 +19,7 @@ Arduino_GFX *gfx = new Arduino_GC9A01(bus, GFX_NOT_DEFINED, 0 /* rotation */, tr
 // Log lines go to USB serial and, as BLE notifications, to the web app's log panel.
 // shortcut: lines before a client subscribes (boot, heap) only reach USB serial; keep a backlog if that matters.
 NimBLECharacteristic *logChar = nullptr;
+NimBLECharacteristic *selectChar = nullptr;  // guard number: written to pick, read/notified to show the current one
 void logf(const char *fmt, ...) {
   char buf[160];
   va_list ap;
@@ -90,6 +91,11 @@ void show(int i) {
   unsigned long t = millis();
   GUARDS[current](gfx);
   logf("guard %d drawn in %lu ms\n", current, millis() - t);
+  // Web app highlights the guard actually on screen: after a reconnect (read) and for BOOT presses (notify).
+  if (selectChar) {
+    selectChar->setValue((uint8_t)current);
+    selectChar->notify();
+  }
 }
 
 void setup() {
@@ -109,8 +115,10 @@ void setup() {
   server->setCallbacks(new ServerCallbacks());
   server->advertiseOnDisconnect(true);  // NimBLE 2.x default is false: one connection and it went silent
   NimBLEService *svc = server->createService("9a49e65d-c7e4-4d64-a03d-061e26e9b26a");
-  svc->createCharacteristic("6eeb6fbb-9458-47d6-9379-e73cab7dfa04", NIMBLE_PROPERTY::WRITE)
-      ->setCallbacks(new SelectCallbacks());
+  selectChar = svc->createCharacteristic("6eeb6fbb-9458-47d6-9379-e73cab7dfa04",
+                                         NIMBLE_PROPERTY::WRITE | NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::NOTIFY);
+  selectChar->setCallbacks(new SelectCallbacks());
+  selectChar->setValue((uint8_t)current);
   // Guard names, one per line, so the web app builds its buttons from the board.
   std::string names;
   for (int i = 0; i < GUARD_COUNT; i++) names += std::string(i ? "\n" : "") + GUARD_NAMES[i];

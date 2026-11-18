@@ -31,7 +31,7 @@ function loadPage() {
   // Fake board: connect() answers unless `reachable` is false (asleep, out of range), then it never settles,
   // as on iOS. Its stored brightness reads 60.
   // failFast: connect rejects at once with a bare code, as Bluefy does ("2") for a sleeping board.
-  const board = { reachable: true, failFast: false, writes: [], pickerOpened: 0 };
+  const board = { reachable: true, failFast: false, writes: [], pickerOpened: 0, current: 2 };
   const device = {
     listeners: {}, addEventListener(t, f) { this.listeners[t] = f; },
     gatt: {
@@ -47,11 +47,28 @@ function loadPage() {
   };
   // The board drops the link by itself (sleep, reset): the page gets the disconnect event.
   const boardDrops = () => { device.gatt.connected = false; device.listeners.gattserverdisconnected(); };
-  const characteristic = (uuid) => ({
-    addEventListener() {}, async startNotifications() {},
-    async readValue() { return uuid.startsWith('ab3b') ? new TextEncoder().encode('A\nB\nC\nD') : { getUint8: () => 60 }; },
-    async writeValue(v) { if (!device.gatt.connected) throw new Error('GATT not connected'); board.writes.push(v[0]); },
+  // One object per characteristic, kept across reconnects like Web Bluetooth does. The guard one (6eeb…)
+  // reads the board's current guard and notifies listeners when it changes.
+  const chars = {};
+  const characteristic = (uuid) => (chars[uuid] ??= {
+    listeners: [],
+    addEventListener(t, f) { this.listeners.push(f); }, async startNotifications() {},
+    async readValue() {
+      if (uuid.startsWith('ab3b')) return new TextEncoder().encode('A\nB\nC\nD');
+      return { getUint8: () => (uuid.startsWith('6eeb') ? board.current : 60) };
+    },
+    async writeValue(v) {
+      if (!device.gatt.connected) throw new Error('GATT not connected');
+      board.writes.push(v[0]);
+      if (uuid.startsWith('6eeb')) board.current = v[0];
+    },
   });
+  // BOOT pressed on the device: it shows the next guard and notifies.
+  board.press = () => {
+    board.current = (board.current + 1) % 4;
+    const value = { getUint8: () => board.current };
+    for (const f of characteristic('6eeb6fbb-9458-47d6-9379-e73cab7dfa04').listeners) f({ target: { value } });
+  };
   const navigator = { bluetooth: { requestDevice: async () => { board.pickerOpened++; return device; } } };
   const localStorage = { getItem: () => null, setItem() {} };
   const fastTimeout = (f, ms) => setTimeout(f, ms / 1000);  // 10 s connect timeout -> 10 ms, 3 s retry -> 3 ms
@@ -64,7 +81,8 @@ function loadPage() {
   const frozen = () => els.bright.disabled && guards().every((b) => b.disabled);
   const live = () => !els.bright.disabled && guards().every((b) => !b.disabled);
   const guards = () => els.guards.childNodes;
-  return { els, document, device, board, boardDrops, tick, until, frozen, live, guards, button: els.connect, status: els.status };
+  const highlighted = () => guards().flatMap((b, i) => (b.classes.has('on') ? [i] : []));
+  return { els, document, device, board, boardDrops, tick, until, frozen, live, guards, highlighted, button: els.connect, status: els.status };
 }
 
 async function connected() {
@@ -80,6 +98,30 @@ test('connect shows disconnect and live guard buttons', async () => {
   const p = await connected();
   assert.equal(p.board.pickerOpened, 1);
   assert.equal(p.guards().length, 4);
+});
+
+test('connect highlights the guard the board is showing', async () => {
+  const p = await connected();  // the fake board starts on guard 2
+  assert.deepEqual(p.highlighted(), [2]);
+});
+
+test('after sleep and reconnect, the highlight is the guard on the board', async () => {
+  const p = await connected();
+  await p.guards()[1].onclick();
+  assert.deepEqual(p.highlighted(), [1]);
+  p.board.reachable = false;
+  p.boardDrops();
+  p.board.reachable = true;
+  await p.until(() => p.button.textContent === 'disconnect');
+  assert.deepEqual(p.highlighted(), [1]);
+});
+
+test('BOOT pressed on the device moves the highlight', async () => {
+  const p = await connected();
+  p.board.press();
+  assert.deepEqual(p.highlighted(), [3]);
+  p.board.press();
+  assert.deepEqual(p.highlighted(), [0]);
 });
 
 test('board drops (sleep, reset): controls freeze, then it reconnects by itself', async () => {
