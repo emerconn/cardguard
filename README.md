@@ -40,6 +40,7 @@ python3 tools/drawtime.py   # resets the board, then sends 'n' over serial to st
 ```sh
 node --test                                   # web app logic (fake browser + board); no board needed, runs on every PR (Tests workflow)
 .venv/bin/python test/hardware/smoke.py       # after flashing: boot, BLE advert, names, picks, brightness, BLE log
+.venv/bin/python test/hardware/reconnect_time.py  # sleep/wake over serial (z), time to first advert and reconnect
 ```
 
 The smoke test needs the board on USB, no serial monitor open, and once:
@@ -47,7 +48,7 @@ The smoke test needs the board on USB, no serial monitor open, and once:
 
 Pick a guard from any Bluetooth LE client: in nRF Connect (iOS/Android) connect to `cardguard`,
 open the service `9a49e65d-…` and write to characteristic `6eeb6fbb-…` the guard number as Text
-(`2`) or as a byte (`02`). Numbers past the last guard show "NO GUARD n" for 3 s and are logged to serial (only the button wraps). Only while the screen is on; light sleep drops Bluetooth. The web app reads the guard names from the board (`GUARD_NAMES`) and highlights the guard on screen: the guard characteristic is also readable and notifies every change (web app, BOOT button, error redraw). Its brightness slider sets the backlight (10-100 %, kept across restarts). While connected the **connect** button reads **disconnect**; a deliberate disconnect clears the controls; a dropped connection (board asleep, reset, out of range) freezes them and reconnects by itself (every 1 s for ~2 min while the page is open), and **connect** goes straight back to the same board. Its **debug** toggle (top right) shows the board's log lines live (sent as BLE notifications; lines from before the web app connected only reach USB serial). It keeps advertising while connected (up to 3 connections), so a reloaded web app still finds it; connects, disconnects and picks are logged to serial.
+(`2`) or as a byte (`02`). Numbers past the last guard show "NO GUARD n" for 3 s and are logged to serial (only the button wraps). Only while the screen is on; light sleep drops Bluetooth. The web app reads the guard names from the board (`GUARD_NAMES`) and highlights the guard on screen: the guard characteristic is also readable and notifies every change (web app, BOOT button, error redraw). Its brightness slider sets the backlight (10-100 %, kept across restarts). While connected the **connect** button reads **disconnect**; a deliberate disconnect clears the controls; a dropped connection (board asleep, reset, out of range) freezes them and reconnects by itself (every 0.3 s for ~2 min while the page is open), and **connect** goes straight back to the same board. Its **debug** toggle (top right) shows the board's log lines live (sent as BLE notifications; lines from before the web app connected only reach USB serial). It keeps advertising while connected (up to 3 connections), so a reloaded web app still finds it; connects, disconnects and picks are logged to serial.
 
 Text uses fonts generated into `src/fonts.h`. When a design needs a new character, add it to the
 lists in `tools/fonts.sh` and run it.
@@ -84,6 +85,7 @@ Target: **~20 designs**, each a crisp digital (vector-style) design, not a photo
 | 2026-11-18 | Tests in `test/`: `node --test` (page logic, fake browser, runs on every PR in the `Tests` workflow) and `test/hardware/smoke.py` (board over serial + BLE, run after flashing); `tools/` is for utilities | Web app bugs reached users before; no firmware unit tests (logic is thin glue, the risk is BLE and the screen) |
 | 2026-11-18 | `main` is tested and validated: every change goes through a PR, the `Tests` workflow must pass to merge (ruleset), Pages deploys from `main` after merge | Tests belong before main, not as a gate inside the deploy |
 | 2026-11-18 | Squash merges only, Conventional Commits for commits and PR titles, CI jobs named lowercase-with-dashes (rules in `CLAUDE.md`) | `main` history reads as one conventional commit per PR |
+| 2026-11-18 | Fast adverts (20-30 ms) after boot, wake and a disconnect, slow (0.5-0.7 s) once connected or after 30 s; web app retries every 0.3 s | Measured (`test/hardware/reconnect_time.py`, 5 trials): first advert after waking 1.77 s -> 0.35 s, reconnect 4.49 s -> 1.16 s |
 
 ### Renderer vs SVG (renderer chosen)
 

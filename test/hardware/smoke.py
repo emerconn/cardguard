@@ -107,7 +107,7 @@ async def main():
         check("brightness reads 10-100", 10 <= level <= 100, level)
         serial_lines.clear()
         await c.write_gatt_char(BRIGHT, bytes([level]), response=True)  # same value: nothing changes for the user
-        check("brightness write is applied", await wait_for(serial_lines, rf"brightness -> {level}%", 3))
+        check("brightness write is applied", await wait_for(serial_lines, rf"brightness: {level}%", 3))
 
         await c.write_gatt_char(SELECT, bytes([0]), response=True)
         await wait_for(serial_lines, r"guard 0 drawn", 3)

@@ -109,9 +109,9 @@ async function attach() {
       log.cardguardListening = true;
     }
     await log.startNotifications();
-    addLog('(page) subscribed to board log');
+    addLog('web: subscribed to board log');
   } catch (e) {
-    addLog(`(page) log unavailable: ${why(e)}`);  // logging must never block connecting
+    addLog(`web: log unavailable: ${why(e)}`);  // logging must never block connecting
   }
   names = new TextDecoder().decode(await (await svc.getCharacteristic(NAMES)).readValue()).split('\n');
   list.replaceChildren();
@@ -131,7 +131,7 @@ async function attach() {
     }
     await select.startNotifications();
   } catch (e) {
-    addLog(`(page) guard updates unavailable: ${why(e)}`);  // the read above still showed the current one
+    addLog(`web: guard updates unavailable: ${why(e)}`);  // the read above still showed the current one
   }
   setConnected(true);
 }
@@ -158,9 +158,10 @@ function setConnected(on) {
 
 // After an unplanned drop (board asleep, reset, out of range), retry while the page is on screen.
 // Bounded so a board left asleep doesn't keep the phone busy; after that, the connect button.
-// Every 1 s: after a connect tap Bluefy rejects at once instead of waiting for the board, so the gap
-// between tries is the delay after waking (3 s felt slow). Rejected tries cost next to nothing.
-const RETRY_EVERY_MS = 1000, RETRY_TRIES = 120;  // about 2 minutes
+// Every 0.3 s: after a connect tap Bluefy rejects at once instead of waiting for the board, so the gap
+// between tries adds to the delay after waking. Rejected tries cost next to nothing. The board advertises
+// fast right after waking, so it is found within a try or two.
+const RETRY_EVERY_MS = 300, RETRY_TRIES = 400;  // about 2 minutes
 // Each loop has a number; starting a loop or stopping retries bumps it, which retires the running one,
 // so taps and drops never leave two loops going. Each try also picks up a link iOS reconnected by itself
 // (Bluefy shows "connected" but the page gets no event for that).
@@ -174,7 +175,7 @@ async function reconnectLoop() {
         await attach();
         if (me === loop) {
           say('reconnected');
-          addLog('(page) reconnected');
+          addLog('web: reconnected');
         }
         return;
       } catch (e) {
@@ -199,10 +200,10 @@ function onDrop() {
     buttons = [];
     light.hidden = true;
     say('disconnected');
-    addLog('(page) disconnected');
+    addLog('web: disconnected');
   } else if (wasUp) {
     say('connection lost; reconnecting…');
-    addLog('(page) connection lost');
+    addLog('web: connection lost');
     reconnectLoop();
   }
 }
@@ -233,7 +234,7 @@ connectBtn.onclick = async () => {
     say('connected; pick a guard');
   } catch (e) {
     if (e && e.name === 'NotFoundError') return say('no cardguard picked; is its screen on?', true);
-    addLog(`(page) connect failed: ${why(e)}`);  // Bluefy's bare codes ("2") belong here, not in the status
+    addLog(`web: connect failed: ${why(e)}`);  // Bluefy's bare codes ("2") belong here, not in the status
     cancelPending();
     say('cardguard not reachable; is it awake? retrying…', true);
     reconnectLoop();  // keep trying, so waking the board brings it back without another tap
