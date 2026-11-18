@@ -1,11 +1,11 @@
-# Publishes docs/ (plain HTML, no build step) to GitHub Pages: the web app lives at docs/app/.
+# Publishes web/ (the web app: plain HTML, no build step) to GitHub Pages, at the site root.
 # Tests run on the PR (tests.yml) before anything reaches main, so this only deploys.
 name: Pages
 
 on:
   push:
     branches: [main]
-    paths: [docs/**, .github/workflows/pages.yml]
+    paths: [web/**, .github/workflows/pages.yml]
   workflow_dispatch:
 
 permissions:
@@ -27,6 +27,6 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/upload-pages-artifact@v5
         with:
-          path: docs
+          path: web
       - id: deploy
         uses: actions/deploy-pages@v5
