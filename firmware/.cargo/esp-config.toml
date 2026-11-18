@@ -1,0 +1,4 @@
+# Keep user/runtime configuration values in this file.
+[env]
+# Library log level; the firmware's own lines (display:, ble:, ...) always print.
+ESP_LOG = "warn"

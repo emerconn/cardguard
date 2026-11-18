@@ -4,26 +4,34 @@ Poker card guard on an ESP32-C3 1.28" round GC9A01 display (240x240). Multiple d
 
 ## Build
 
-Needs [PlatformIO](https://platformio.org/) (`pio`). Run from the repo root; the board is the only
-environment (`esp32-c3`), so no `-e` is needed.
+Firmware is Rust, bare metal (`esp-hal` + Embassy, BLE via `esp-radio` + `trouble-host`). Needs
+[rustup](https://rustup.rs/) (the toolchain and RISC-V target install themselves from
+`firmware/rust-toolchain.toml`) and `cargo install espflash --locked`.
+
+| Path | What |
+|---|---|
+| `firmware/` | The board's program: display, button, backlight, BLE, sleep (`src/main.rs`, `src/display.rs`) |
+| `guards/` | Designs and the anti-aliased renderer; `no_std`, so the same code also runs on the PC for previews and tests |
 
 ```sh
-pio run                        # compile firmware -> .pio/build/esp32-c3/firmware.bin
-pio run -t upload              # compile if needed, then flash over USB
-pio device monitor             # serial output at 115200; Ctrl+C to exit
-pio run -t upload -t monitor   # all of the above in one go
-pio run -t compiledb           # refresh compile_commands.json by hand (builds already do it when stale)
+cd firmware
+cargo build --release          # compile -> target/riscv32imc-unknown-none-elf/release/cardguard
+cargo run --release            # compile if needed, then flash over USB
+espflash monitor               # serial output; Ctrl+C to exit
+cd ../guards && cargo test     # renderer tests on the PC
 ```
 
-- Only one program can hold the serial port: close any running monitor before uploading, or the
-  upload fails with "port is busy".
+- Only one program can hold the serial port: close any running monitor before flashing, or it
+  fails with "port is busy".
 - The monitor shows `guard N drawn in X ms` after each redraw. Typing `n` steps to the next design.
-- If upload can't connect, hold BOOT and tap RST (or hold BOOT while plugging in), then upload.
+- If flashing can't connect, hold BOOT and tap RST (or hold BOOT while plugging in), then flash.
+- Editors: rust-analyzer needs `check.allTargets = false` (the firmware has no test harness);
+  `.nvim.lua` sets it for Neovim (`vim.o.exrc = true`).
 
-Pins are in `src/main.cpp` (vendor pinout, RST not wired). Board specs, pinout, dimensions and sources:
+Pins are in `firmware/src/main.rs` (vendor pinout, RST not wired). Board specs, pinout, dimensions and sources:
 [`docs/hardware.md`](docs/hardware.md).
 
-Preview every guard on the PC, using the real Arduino_GFX drawing code:
+Preview every guard on the PC with the same renderer the board runs:
 
 ```sh
 tools/preview/run.sh   # writes preview/guard_N.png
@@ -39,16 +47,16 @@ Tests: `node --test` for the web app; board tests and setup are in [`test/README
 
 Pick a guard from any Bluetooth LE client: in nRF Connect (iOS/Android) connect to `cardguard`,
 open the service `9a49e65d-…` and write to characteristic `6eeb6fbb-…` the guard number as Text
-(`2`) or as a byte (`02`). Numbers past the last guard show "NO GUARD n" for 3 s and are logged to serial (only the button wraps). Only while the screen is on; light sleep drops Bluetooth. The web app reads the guard names from the board (`GUARD_NAMES`) and highlights the guard on screen: the guard characteristic is also readable and notifies every change (web app, BOOT button, error redraw). Its brightness slider sets the backlight (10-100 %, kept across restarts). While connected the **connect** button reads **disconnect**; a deliberate disconnect clears the controls; a dropped connection (board asleep, reset, out of range) freezes them and reconnects by itself (every 0.3 s for ~2 min while the page is open), and **connect** goes straight back to the same board. Its **debug** toggle (top right) shows the board's log lines live (sent as BLE notifications; lines from before the web app connected only reach USB serial). It keeps advertising while connected (up to 3 connections), so a reloaded web app still finds it; connects, disconnects and picks are logged to serial.
+(`2`) or as a byte (`02`). Numbers past the last guard show "NO GUARD n" for 3 s and are logged to serial (only the button wraps). Only while the screen is on: sleep turns Bluetooth off, and waking restarts the board on the same guard. The web app reads the guard names from the board (`GUARD_NAMES`) and highlights the guard on screen: the guard characteristic is also readable and notifies every change (web app, BOOT button, error redraw). Its brightness slider sets the backlight (10-100 %, kept across restarts). While connected the **connect** button reads **disconnect**; a deliberate disconnect clears the controls; a dropped connection (board asleep, reset, out of range) freezes them and reconnects by itself (every 0.3 s for ~2 min while the page is open), and **connect** goes straight back to the same board. Its **debug** toggle (top right) shows the board's log lines live (sent as BLE notifications; lines from before the web app connected only reach USB serial). It keeps advertising while connected (up to 3 connections), so a reloaded web app still finds it; connects, disconnects and picks are logged to serial.
 
-Text uses fonts generated into `src/fonts.h`. When a design needs a new character, add it to the
+Text uses fonts generated into `guards/src/fonts.rs`. When a design needs a new character, add it to the
 lists in `tools/fonts.sh` and run it.
 
 ## Hardware budget
 
 ESP32-C3: 4 MB flash, ~320 KB RAM for the program, no FPU, no PSRAM.
-Default partitions give the app 1.25 MB; `board_build.partitions = huge_app.csv` raises it to 3 MB
-(drops OTA, which we don't use). Images live in flash as `const`, not RAM.
+espflash's default partition table gives the app ~3.9 MB (no OTA, which we don't use); the firmware
+is ~460 KB. Fonts and other data live in flash as `static`, not RAM.
 
 ## Decisions
 
@@ -79,12 +87,17 @@ Target: **~20 designs**, each a crisp digital (vector-style) design, not a photo
 | 2026-11-18 | Draw-time target **under 200 ms** at CPU 80 MHz. Renderer: shapes visit only each row's covered columns and store fully covered runs straight to the buffer; per-row start values stepped in fixed point instead of soft-float; integer `fsin`/`fcos` (newlib's cost ~40 us each, ~800 calls a frame); 120-row strips (2 scene passes, 58 KB, heap 141 -> 122 KB free) | 212-345 ms -> 108-169 ms. Previews match the old renderer except 4-27 edge pixels per guard, off by one RGB565 step. Not done: full-frame buffer (would leave ~64 KB heap for BLE); SPI push (~23 ms) can't overlap, the bus driver has no DMA |
 | 2026-11-18 | Fast adverts (20-30 ms) after boot, wake and a disconnect, slow (0.5-0.7 s) once connected or after 30 s; web app retries every 0.3 s | Measured (`test/hardware/reconnect_time.py`, 5 trials): first advert after waking 1.77 s -> 0.35 s, reconnect 4.49 s -> 1.16 s |
 | 2026-11-18 | **No gain**: DMA double-buffered strip push (own IDF SPI device on a shared `Arduino_ESP32SPIDMA` bus, 4 x 60-row strips in 2 x 29 KB, push queued while the next strip draws) | Push cost 23 -> ~10 ms (5 ms is the RGB565 byte swap), but each extra scene pass costs 7-15 ms: 108/145/137/169 -> 108/149/141/185 ms. 80-row strips est. break-even (+19 KB), 2 x 120-row est. -6 ms (+58 KB heap). Fewer scene passes matter, not the push |
+| 2026-11-18 | **Firmware rewritten in Rust**: bare-metal `esp-hal` + Embassy, BLE via `esp-radio` + `trouble-host`; renderer and designs in the `no_std` `guards` crate (also runs on the PC for previews) | Memory safety; event-driven (the CPU halts between button, serial and BLE events instead of a 10 ms poll loop); 468 KB flash (was 680). Same BLE UUIDs, byte formats and serial lines, so the web app and tests are unchanged. RAM: 117 KB static + 64 KB heap (35 KB used by BLE) in the bootloader's reclaimed RAM, ~200 KB left for the stack (peak not measured); C++ had 122 KB heap free |
+| 2026-11-18 | Rust renderer pixel-identical to the C++ one (previews diffed); float-to-int by reading the bits, `f32` min/max as plain compares, per-pixel helpers force-inlined | Rust's saturating `as` casts and NaN-aware min/max cost 3+ extra soft-float calls each without an FPU: draws were 134/192/196/217 ms, now 93/139/138/167 (C++ 108/145/137/169) |
+| 2026-11-18 | Strip buffer stored in panel byte order (big-endian RGB565), pushed by DMA as two 60-row halves | No byte-swap pass and the CPU idles during the push: ~23 -> 13 ms a frame. One SPI DMA transfer is at most 32,736 bytes, a 120-row strip is 57,600 |
+| 2026-11-18 | Waking from sleep restarts the chip, guard kept in RTC memory | esp-radio's BLE controller advertises nothing after light sleep and only shuts down when dropped. The panel keeps its image meanwhile. First advert 0.51 s after waking, reconnect 1.24 s (C++ 0.35 / 1.16 s; the gap is mostly the bootloader) |
+| 2026-11-18 | Brightness kept as 2 raw bytes (tag + value) at the start of the nvs partition, sector erased per save | No NVS library needed; saves are rare (2 s after the slider stops). The old C++ NVS value isn't read, so the first boot after updating starts at 60 % |
 
 ### Renderer vs SVG (renderer chosen)
 
 | | `option/renderer` | `option/svg` |
 |---|---|---|
-| How | Designs are code; `src/smooth.h` anti-aliases shapes and rotated text on the chip | Designs are SVG; rendered on the PC, stored palette + RLE (~20 KB each) |
+| How | Designs are code; `guards/src/smooth.rs` anti-aliases shapes and rotated text on the chip | Designs are SVG; rendered on the PC, stored palette + RLE (~20 KB each) |
 | Looks | Best | Very good |
 | Draw time | 112-165 ms (was ~10 s before fixed-point rewrite) | Instant (~30 ms) |
 | Next | Further speedup possible (integer row maths), or pre-render its output on the PC | Kept on GitHub as a fallback |

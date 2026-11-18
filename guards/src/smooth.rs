@@ -8,7 +8,7 @@
 //!
 //! The buffer holds pixels in the panel's byte order (big-endian RGB565), so a strip goes to the
 //! display as is; only blended edge pixels pay a byte swap.
-use libm::{ceilf, fabsf, floorf, hypotf, roundf};
+use libm::{fabsf, hypotf};
 
 // Doubles, as Arduino defines them: angle conversions round once from double, like the C++ original did.
 const DEG_TO_RAD: f64 = 0.017453292519943295769236907684886;
@@ -69,7 +69,7 @@ fn sin_phase(ph: u32) -> f32 {
 }
 // rad * 2^24 is exact in float; the turn conversion (x 256 / 2pi, in Q26) stays in integers.
 fn rad_phase(rad: f32) -> u32 {
-    ((roundf(rad * 16777216.0) as i64 * 2734261102) >> 26) as u32
+    ((iround(rad * 16777216.0) * 2734261102) >> 26) as u32
 }
 pub fn fsin(rad: f32) -> f32 {
     sin_phase(rad_phase(rad))
@@ -78,8 +78,55 @@ pub fn fcos(rad: f32) -> f32 {
     sin_phase(rad_phase(rad).wrapping_add(0x4000_0000))
 }
 
+// Float to int by reading the bits. Rust's `as` saturates and maps NaN to 0, which costs three
+// extra library calls per cast on this FPU-less chip; these give C's results with integer ops only.
+/// (negative, |x| truncated, |x| has a fraction, that fraction is >= 0.5)
+fn parts(x: f32) -> (bool, i64, bool, bool) {
+    let b = x.to_bits();
+    let (neg, exp, frac) = (b >> 31 != 0, (b >> 23) & 0xFF, (b & 0x7F_FFFF) as i64);
+    if exp == 0 && frac == 0 {
+        return (neg, 0, false, false);
+    }
+    // value = m * 2^e; denormals have no implicit bit
+    let (m, e) = if exp == 0 { (frac, -149) } else { (frac | 0x80_0000, exp as i32 - 150) };
+    if e >= 0 {
+        (neg, if e > 38 { i64::MAX >> 1 } else { m << e }, false, false) // huge and NaN saturate
+    } else if e < -24 {
+        (neg, 0, true, false) // below 0.5
+    } else {
+        let s = -e;
+        (neg, m >> s, m & ((1 << s) - 1) != 0, (m >> (s - 1)) & 1 != 0)
+    }
+}
+/// lroundf: nearest, halves away from zero
+fn iround(x: f32) -> i64 {
+    let (n, i, _, half) = parts(x);
+    let v = i + half as i64;
+    if n { -v } else { v }
+}
+/// (int)x: toward zero
+fn itrunc(x: f32) -> i32 {
+    let (n, i, _, _) = parts(x);
+    (if n { -i } else { i }) as i32
+}
+fn ifloor(x: f32) -> i32 {
+    let (n, i, f, _) = parts(x);
+    (if n { -i - f as i64 } else { i }) as i32
+}
+fn iceil(x: f32) -> i32 {
+    let (n, i, f, _) = parts(x);
+    (if n { -i } else { i + f as i64 }) as i32
+}
+
+// std::min / std::max: one compare. f32::min / max handle NaN and become library calls without an FPU.
+fn fmin(a: f32, b: f32) -> f32 {
+    if b < a { b } else { a }
+}
+fn fmax(a: f32, b: f32) -> f32 {
+    if a < b { b } else { a }
+}
 fn fx(v: f32) -> i32 {
-    roundf(v * 65536.0) as i32
+    iround(v * 65536.0) as i32
 }
 // Coverage 0..32 from signed distance to an edge (negative = inside).
 fn cover(d: f32) -> i32 {
@@ -88,9 +135,10 @@ fn cover(d: f32) -> i32 {
     } else if d >= 0.5 {
         0
     } else {
-        ((0.5 - d) * 32.0) as i32
+        itrunc((0.5 - d) * 32.0)
     }
 }
+#[inline(always)]
 fn cover_fx(d: i32) -> i32 {
     if d <= -32768 {
         32
@@ -101,6 +149,7 @@ fn cover_fx(d: i32) -> i32 {
     }
 }
 /// k = 0 -> a, 32 -> b (native RGB565).
+#[inline(always)]
 fn mix(a: u16, b: u16, k: i32) -> u16 {
     let (a, b) = (a as i32, b as i32);
     let r = ((a >> 11) * (32 - k) + (b >> 11) * k) >> 5;
@@ -166,11 +215,12 @@ impl<'a> Smooth<'a> {
     /// Clip later shapes to a circle of radius r around the screen centre; r = 0 turns it off.
     pub fn clip(&mut self, r: f32) {
         self.clip_r = r;
-        self.clip_in = if r != 0.0 { ((2.0 * r - 1.0) * (2.0 * r - 1.0)) as i32 } else { 0 };
-        self.clip_out = if r != 0.0 { ((2.0 * r + 1.0) * (2.0 * r + 1.0)) as i32 } else { 0 };
+        self.clip_in = if r != 0.0 { itrunc((2.0 * r - 1.0) * (2.0 * r - 1.0)) } else { 0 };
+        self.clip_out = if r != 0.0 { itrunc((2.0 * r + 1.0) * (2.0 * r + 1.0)) } else { 0 };
     }
 
     /// c is in buffer (panel) byte order.
+    #[inline(always)]
     fn plot(&mut self, x: i32, y: i32, mut k: i32, c: u16) {
         if k <= 0 || x < 0 || x >= W as i32 || y < self.y0 || y >= self.y0 + STRIP as i32 {
             return;
@@ -183,7 +233,7 @@ impl<'a> Smooth<'a> {
                 return;
             }
             if d > self.clip_in {
-                k = k * cover((d as f32 / 4.0 - self.clip_r * self.clip_r) / (2.0 * self.clip_r)) >> 5;
+                k = (k * cover((d as f32 / 4.0 - self.clip_r * self.clip_r) / (2.0 * self.clip_r))) >> 5;
             }
         }
         let p = &mut self.row(y)[x as usize];
@@ -214,15 +264,16 @@ impl<'a> Smooth<'a> {
 
     // Rows of the current strip that overlap [top, bottom).
     fn row_lo(&self, top: f32) -> i32 {
-        self.y0.max(floorf(top) as i32)
+        self.y0.max(ifloor(top))
     }
     fn row_hi(&self, bottom: f32) -> i32 {
-        (self.y0 + STRIP as i32).min(ceilf(bottom) as i32)
+        (self.y0 + STRIP as i32).min(iceil(bottom))
     }
+    #[inline(always)]
     fn row(&mut self, y: i32) -> &mut [u16] {
         let r = (y - self.y0) as usize;
-        let i = r % HALF * W;
-        &mut self.halves[r / HALF][i..i + W]
+        let (h, r) = if r < HALF { (0, r) } else { (1, r - HALF) };
+        &mut self.halves[h][r * W..r * W + W]
     }
 
     pub fn fill(&mut self, c: u16) {
@@ -238,14 +289,14 @@ impl<'a> Smooth<'a> {
             return;
         }
         // Positions in 24.8 fixed point; their squares carry 16 fraction bits, so sqrt gives 8 again.
-        let cx8 = roundf(cx * 256.0) as i32;
-        let cy8 = roundf(cy * 256.0) as i32;
-        let out2 = roundf((r + 0.5) * (r + 0.5) * 65536.0) as i32;
-        let in2 = if r > 0.5 { roundf((r - 0.5) * (r - 0.5) * 65536.0) as i32 } else { -1 };
-        let hole2 = if hole > 1.0 { roundf((hole - 1.0) * (hole - 1.0) * 65536.0) as i32 } else { -1 };
-        let r2 = roundf(r * r * 65536.0) as i32;
-        let inv2r = roundf(65536.0 / (2.0 * r)) as i64; // edge distance (|p|^2 - r^2) / 2r, in 16.16
-        let g = roundf(32.0 / (2.8 * r) * 65536.0) as i64; // gradient step per pixel, 16.16
+        let cx8 = iround(cx * 256.0) as i32;
+        let cy8 = iround(cy * 256.0) as i32;
+        let out2 = iround((r + 0.5) * (r + 0.5) * 65536.0) as i32;
+        let in2 = if r > 0.5 { iround((r - 0.5) * (r - 0.5) * 65536.0) as i32 } else { -1 };
+        let hole2 = if hole > 1.0 { iround((hole - 1.0) * (hole - 1.0) * 65536.0) as i32 } else { -1 };
+        let r2 = iround(r * r * 65536.0) as i32;
+        let inv2r = iround(65536.0 / (2.0 * r)); // edge distance (|p|^2 - r^2) / 2r, in 16.16
+        let g = iround(32.0 / (2.8 * r) * 65536.0); // gradient step per pixel, 16.16
         let mut shade = [0u16; 33]; // the gradient's 33 levels, mixed once
         if c0 != c1 {
             for (k, s) in shade.iter_mut().enumerate() {
@@ -277,17 +328,30 @@ impl<'a> Smooth<'a> {
                     // jump over the hole
                     kf += g * (hb - x);
                     x = hb;
-                } else {
+                } else if x < sa || x > sb || self.clip_out != 0 {
                     let c = if c0 == c1 { flat } else { shade[(kf >> 16).clamp(0, 32) as usize] };
                     if x < sa || x > sb {
                         // edge pixel: |p| - r ~= (|p|^2 - r^2) / 2r, no sqrt needed
                         let dx8 = x * 256 + 128 - cx8;
                         self.plot(x, y, cover_fx((((dx8 * dx8 + dy2 - r2) as i64 * inv2r) >> 16) as i32), c);
-                    } else if self.clip_out != 0 {
-                        self.plot(x, y, 32, c);
                     } else {
-                        self.row(y)[x as usize] = c; // fully covered, on screen and unclipped
+                        self.plot(x, y, 32, c);
                     }
+                } else {
+                    // fully covered, on screen and unclipped: the whole run up to the edge or the hole at once
+                    let e = sb.min(hi).min(if ha > x { ha - 1 } else { i32::MAX });
+                    let run = &mut self.row(y)[x as usize..=e as usize];
+                    if c0 == c1 {
+                        run.fill(flat);
+                        kf += g * (e - x);
+                    } else {
+                        for p in run {
+                            *p = shade[(kf >> 16).clamp(0, 32) as usize];
+                            kf += g;
+                        }
+                        kf -= g; // the loop below steps past e
+                    }
+                    x = e;
                 }
                 x += 1;
                 kf += g;
@@ -306,10 +370,10 @@ impl<'a> Smooth<'a> {
         for i in 0..n {
             let j = (i + 1) % n;
             area += p[2 * i] * p[2 * j + 1] - p[2 * j] * p[2 * i + 1];
-            lo = lo.min(p[2 * i + 1]);
-            hi = hi.max(p[2 * i + 1]);
-            l = l.min(p[2 * i]);
-            rr = rr.max(p[2 * i]);
+            lo = fmin(lo, p[2 * i + 1]);
+            hi = fmax(hi, p[2 * i + 1]);
+            l = fmin(l, p[2 * i]);
+            rr = fmax(rr, p[2 * i]);
         }
         if self.skip(lo - 1.0, hi + 1.0) {
             return;
@@ -325,8 +389,8 @@ impl<'a> Smooth<'a> {
             ny[i] = -s * ex / len;
             nc[i] = -(nx[i] * p[2 * i] + ny[i] * p[2 * i + 1]);
         }
-        let xa = floorf(l - 1.0) as i32;
-        let xb = ceilf(rr + 1.0) as i32;
+        let xa = ifloor(l - 1.0);
+        let xb = iceil(rr + 1.0);
         let (mut d, mut step, mut step_y) = ([0i32; 8], [0i32; 8], [0i32; 8]);
         let y_lo = self.row_lo(lo - 1.0);
         for i in 0..n {
@@ -376,12 +440,12 @@ impl<'a> Smooth<'a> {
 
     /// Ellipse rotated by deg (approximate distance, fine for small shapes like leaves).
     pub fn ellipse(&mut self, cx: f32, cy: f32, rx: f32, ry: f32, deg: f32, c: u16) {
-        let big_r = rx.max(ry) + 1.0;
+        let big_r = fmax(rx, ry) + 1.0;
         if self.skip(cy - big_r, cy + big_r) {
             return;
         }
         let c = c.swap_bytes();
-        let (s, co, m) = (fsin(rad(deg)), fcos(rad(deg)), rx.min(ry));
+        let (s, co, m) = (fsin(rad(deg)), fcos(rad(deg)), fmin(rx, ry));
         let m_fx = fx(m) as i64;
         let qin = fx((1.0 - 0.5 / m) * (1.0 - 0.5 / m)) as i64;
         let qout = fx((1.0 + 0.5 / m) * (1.0 + 0.5 / m)) as i64;
@@ -394,9 +458,9 @@ impl<'a> Smooth<'a> {
         let (cx16, cy16, kb) = (fx(cx), fx(cy), fx(-bb / a));
         let h_out = fx((qout as f32 / 65536.0 + 0.01) / a);
         let h_in = if qin > 1000 { fx((qin as f32 / 65536.0 - 0.01) / a) } else { -1 }; // padded inward
-        let h1 = roundf(ix * iy / (a * a) * 4294967296.0) as i64;
-        let xa = floorf(cx - big_r) as i32;
-        let xb = ceilf(cx + big_r) as i32;
+        let h1 = iround(ix * iy / (a * a) * 4294967296.0);
+        let xa = ifloor(cx - big_r);
+        let xb = iceil(cx + big_r);
         let y_lo = self.row_lo(cy - big_r);
         let (dx0, dy0) = (xa as f32 + 0.5 - cx, y_lo as f32 + 0.5 - cy); // row-start (u, v) at the first row, then stepped
         let mut u0 = fx((dx0 * co + dy0 * s) / rx);
@@ -464,8 +528,8 @@ impl<'a> Smooth<'a> {
         let ry = fabsf(w / 2.0 * s) + fabsf(h / 2.0 * co) + 1.0;
         let (ex, ey, fr) = (fx(w / 2.0 - radius), fx(h / 2.0 - radius), fx(radius)); // straight-edge half extents
         let (dux, dvx) = (fx(co), fx(-s));
-        let xa = floorf(cx - rx) as i32;
-        let xb = ceilf(cx + rx) as i32;
+        let xa = ifloor(cx - rx) as i32;
+        let xb = iceil(cx + rx) as i32;
         let y_lo = self.row_lo(cy - ry);
         let (dx, dy) = (xa as f32 + 0.5 - cx, y_lo as f32 + 0.5 - cy);
         let mut u0 = fx(dx * co + dy * s); // rectangle's own axes
@@ -528,7 +592,7 @@ impl<'a> Smooth<'a> {
     #[allow(clippy::too_many_arguments)]
     pub fn arc(&mut self, cx: f32, cy: f32, r: f32, width: f32, a0: f32, a1: f32, c: u16) {
         let big_r = r + width / 2.0 + 1.0;
-        let ri_box = (r - width / 2.0 - 1.0).max(0.0);
+        let ri_box = fmax(0.0, r - width / 2.0 - 1.0);
         if self.skip(cy - big_r, cy + big_r) {
             return;
         }
@@ -536,10 +600,10 @@ impl<'a> Smooth<'a> {
         let (s0, c0, s1, c1) = (fsin(rad(a0)), fcos(rad(a0)), fsin(rad(a1)), fcos(rad(a1)));
         // Bounding box: both ends at both radii, plus the outer extreme of any axis the arc crosses.
         let (rb, ro_) = (ri_box, big_r);
-        let mut lo = cy + (rb * s0).min(ro_ * s0).min((rb * s1).min(ro_ * s1));
-        let mut hi = cy + (rb * s0).max(ro_ * s0).max((rb * s1).max(ro_ * s1));
-        let mut l = cx + (rb * c0).min(ro_ * c0).min((rb * c1).min(ro_ * c1));
-        let mut rr = cx + (rb * c0).max(ro_ * c0).max((rb * c1).max(ro_ * c1));
+        let mut lo = cy + fmin(fmin(rb * s0, ro_ * s0), fmin(rb * s1, ro_ * s1));
+        let mut hi = cy + fmax(fmax(rb * s0, ro_ * s0), fmax(rb * s1, ro_ * s1));
+        let mut l = cx + fmin(fmin(rb * c0, ro_ * c0), fmin(rb * c1, ro_ * c1));
+        let mut rr = cx + fmax(fmax(rb * c0, ro_ * c0), fmax(rb * c1, ro_ * c1));
         let mut q = -180;
         while q <= 180 {
             if (q as f32) > a0 && (q as f32) < a1 {
@@ -557,22 +621,22 @@ impl<'a> Smooth<'a> {
             return;
         }
         // Squared-distance limits of the band in doubled pixel units, so most of the box is rejected with ints.
-        let mut inn = (2.0 * (r - width / 2.0) - 1.0).max(0.0) as i32;
-        let mut out = (2.0 * (r + width / 2.0) + 1.0) as i32;
-        let (cx2, cy2) = (roundf(2.0 * cx) as i32, roundf(2.0 * cy) as i32);
-        let mut fin = (2.0 * (r - width / 2.0) + 1.0) as i32; // fully inside between these
-        let mut fout = (2.0 * (r + width / 2.0) - 1.0).max(0.0) as i32;
+        let mut inn = itrunc(fmax(0.0, 2.0 * (r - width / 2.0) - 1.0));
+        let mut out = itrunc(2.0 * (r + width / 2.0) + 1.0);
+        let (cx2, cy2) = (iround(2.0 * cx) as i32, iround(2.0 * cy) as i32);
+        let mut fin = itrunc(2.0 * (r - width / 2.0) + 1.0); // fully inside between these
+        let mut fout = itrunc(fmax(0.0, 2.0 * (r + width / 2.0) - 1.0));
         inn *= inn;
         out *= out;
         fin *= fin;
         fout *= fout;
         // Angle limits as 12-bit fixed-point directions, so the side test is integer too.
-        let (sa0, ca0, sa1, ca1) = ((s0 * 4096.0) as i32, (c0 * 4096.0) as i32, (s1 * 4096.0) as i32, (c1 * 4096.0) as i32);
+        let (sa0, ca0, sa1, ca1) = (itrunc(s0 * 4096.0), itrunc(c0 * 4096.0), itrunc(s1 * 4096.0), itrunc(c1 * 4096.0));
         // Edge distance (|p|^2 - e^2) / 2e for each edge radius e, kept in ints: |p|^2 = D / 4.
         let (ri, ro) = (r - width / 2.0, r + width / 2.0);
-        let (ro4, ri4) = (roundf(4.0 * ro * ro) as i32, roundf(4.0 * ri * ri) as i32);
-        let k_out = roundf(65536.0 * 65536.0 / (8.0 * ro)) as i64;
-        let k_in = if ri > 0.0 { roundf(65536.0 * 65536.0 / (8.0 * ri)) as i64 } else { 0 };
+        let (ro4, ri4) = (iround(4.0 * ro * ro) as i32, iround(4.0 * ri * ri) as i32);
+        let k_out = iround(65536.0 * 65536.0 / (8.0 * ro));
+        let k_in = if ri > 0.0 { iround(65536.0 * 65536.0 / (8.0 * ri)) } else { 0 };
         for y in self.row_lo(lo)..self.row_hi(hi) {
             let yy = 2 * y + 1 - cy2;
             let rest = out - 1 - yy * yy;
@@ -582,8 +646,8 @@ impl<'a> Smooth<'a> {
             // Only columns between the outer and inner circle: |X| <= m keeps D < out, |X| <= h keeps D <= in.
             let m = isqrt(rest as u32) as i32;
             let h = if inn - yy * yy >= 0 { isqrt((inn - yy * yy) as u32) as i32 } else { -1 };
-            let mut xa = (floorf(l) as i32).max((cx2 - m) >> 1);
-            let mut xb = (ceilf(rr) as i32).min((cx2 - 1 + m) >> 1);
+            let mut xa = ifloor(l).max((cx2 - m) >> 1);
+            let mut xb = iceil(rr).min((cx2 - 1 + m) >> 1);
             let (ha, hb) = ((cx2 - h) >> 1, (cx2 - 1 + h) >> 1); // hole columns; ha > hb when there is none
             self.row_span(y, &mut xa, &mut xb);
             let mut x = xa;
@@ -639,18 +703,18 @@ impl<'a> Smooth<'a> {
             let u = (gxo + (i & 1) as f32 * gw as f32 - ax) * scale;
             let v = (gyo + (i >> 1) as f32 * gh as f32 - ay) * scale;
             let (x, y) = (cx + u * co - v * s, cy + u * s + v * co);
-            lo = lo.min(y);
-            hi = hi.max(y);
-            l = l.min(x);
-            rr = rr.max(x);
+            lo = fmin(lo, y);
+            hi = fmax(hi, y);
+            l = fmin(l, x);
+            rr = fmax(rr, x);
         }
 
         // Font-space position (u, v) of a screen point is linear in x and y; step it in fixed point.
         let (usx, vsx) = (fx(co / scale / 4.0), fx(-s / scale / 4.0));
         let (usy, vsy) = (fx(s / scale / 4.0), fx(co / scale / 4.0));
         let bits = &f.bitmap[g.offset as usize..];
-        let xa = floorf(l) as i32;
-        let xb = ceilf(rr) as i32;
+        let xa = ifloor(l);
+        let xb = iceil(rr);
         let y_lo = self.row_lo(lo);
         let (dx, dy) = (xa as f32 + 0.125 - cx, y_lo as f32 + 0.125 - cy);
         let mut u0 = fx((dx * co + dy * s) / scale + ax - gxo);
@@ -732,6 +796,21 @@ impl<'a> Smooth<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn bit_casts_match_std() {
+        let mut xs = vec![0.0f32, -0.0, 0.5, -0.5, 1.5, -1.5, 2.5, 0.49999997, -0.49999997, 1e-40, -1e-40, 8388607.5, 1e9, -1e9];
+        for i in -20000..20000 {
+            xs.push(i as f32 * 0.25 + 0.0001 * (i % 7) as f32);
+            xs.push(i as f32 * 1234.567);
+        }
+        for x in xs {
+            assert_eq!(iround(x), x.round() as i64, "round {x}");
+            assert_eq!(itrunc(x), x.trunc() as i32, "trunc {x}");
+            assert_eq!(ifloor(x), x.floor() as i32, "floor {x}");
+            assert_eq!(iceil(x), x.ceil() as i32, "ceil {x}");
+        }
+    }
 
     #[test]
     fn integer_sin_cos_stay_float_accurate() {

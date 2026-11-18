@@ -16,7 +16,7 @@ TRIALS = int(sys.argv[1]) if len(sys.argv) > 1 else 5
 PORT = sys.argv[2] if len(sys.argv) > 2 else "/dev/ttyACM0"
 
 
-SLEEP_S = 5  # matches sleepUntilPress(5) for 'z' in src/main.cpp
+SLEEP_S = 5  # matches Cmd::Sleep(5) for 'z' in firmware/src/main.rs
 
 
 def sleep_board():

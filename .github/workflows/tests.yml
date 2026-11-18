@@ -19,6 +19,16 @@ jobs:
       - uses: actions/checkout@v7
       - run: node --test
 
+  # Renderer tests on the PC, and the firmware must compile. Running it needs the board (smoke.py, locally).
+  firmware:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: cargo test
+        working-directory: guards
+      - run: rustup toolchain install && cargo build --release # toolchain + RISC-V target from rust-toolchain.toml
+        working-directory: firmware
+
   # Squash merges make the PR title the commit on main, so this keeps main's history conventional.
   pr-title:
     if: github.event_name == 'pull_request'

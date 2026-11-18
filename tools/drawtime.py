@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """Time every guard on the real board: resets it, reads the boot draw, then sends 'n' to step through the rest.
 
-Usage: pio run -t upload && python3 tools/drawtime.py [PORT]   (close any serial monitor first)
-Relies on main.cpp printing "guard N drawn in X ms" and stepping to the next guard on 'n'.
+Usage: (cd firmware && cargo run --release) && python3 tools/drawtime.py [PORT]   (close any serial monitor first)
+Relies on the firmware printing "guard N drawn in X ms" and stepping to the next guard on 'n'.
 """
 import re, sys, time
-import serial  # pyserial, installed alongside PlatformIO
+import serial  # pyserial: see test/README.md for the venv
 
 PORT = sys.argv[1] if len(sys.argv) > 1 else "/dev/ttyACM0"
 

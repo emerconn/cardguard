@@ -1,0 +1,13 @@
+# Keep compilation settings in this file and user/runtime settings in `esp-config.toml`.
+include = ["esp-config.toml"]
+
+[target.riscv32imc-unknown-none-elf]
+runner = "espflash flash --chip esp32c3" # `espflash monitor` to watch serial; tools/drawtime.py needs the port free
+
+[build]
+rustflags = [
+  # Required to obtain backtraces (e.g. when using the "esp-backtrace" crate.)
+  "-C", "force-frame-pointers",
+]
+
+target = "riscv32imc-unknown-none-elf"

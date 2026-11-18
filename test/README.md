@@ -12,6 +12,15 @@ node --test
 connecting, highlights, frozen controls, automatic reconnects and disconnecting. No dependencies. The
 `Tests` workflow runs it on every pull request (`web-app` check).
 
+## Renderer (no board needed)
+
+```sh
+(cd guards && cargo test)
+```
+
+Unit tests next to the code in `guards/src/smooth.rs` (integer sin/cos, float-to-int casts). The
+`Tests` workflow runs them and builds the firmware on every pull request (`firmware` check).
+
 ## Board (`hardware/`)
 
 Needs the board on USB with the current firmware and no serial monitor open. One-time setup:
