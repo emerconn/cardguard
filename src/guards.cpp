@@ -305,11 +305,16 @@ static void donkey(Smooth &s) {
 
   s.ellipse(120, 128, 22.5f, 17.5f, 0, BROWN_D);  // muzzle
   s.ellipse(120, 128, 21, 16, 0, TAN);
+  // Grin: a dark-rimmed half ellipse of teeth under a lip line, upturned corners, and the muzzle
+  // showing below it as the lower lip.
+  s.ellipse(120, 132, 15, 7, 0, INK);
+  s.ellipse(120, 132.6f, 13.4f, 5.6f, 0, PAPER);
+  s.rect(103, 123, 34, 9, TAN);
+  s.rect(105, 131, 30, 1.6f, BROWN_D);
+  s.ellipse(104.5f, 130, 3.4f, 1.1f, 53, BROWN_D);
+  s.ellipse(135.5f, 130, 3.4f, 1.1f, -53, BROWN_D);
   s.ellipse(111, 122, 3.6f, 2.4f, -20, BROWN_D);  // nostrils
   s.ellipse(129, 122, 3.6f, 2.4f, 20, BROWN_D);
-  s.ellipse(120, 138, 14, 6, 0, INK);  // grin: a dark-rimmed half ellipse of teeth
-  s.ellipse(120, 138.6f, 12.4f, 4.6f, 0, PAPER);
-  s.rect(103, 129, 34, 9, TAN);
 
   for (int side = -1; side <= 1; side += 2) {
     float hx = 120 + 30 * side;
