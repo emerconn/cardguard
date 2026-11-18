@@ -19,6 +19,7 @@
   #connect { background: var(--gold); color: #111; border: 0; text-align: center; }
   #connect.off { background: transparent; color: var(--fg); border: 2px solid #333; }
   #light { margin: 8px 0 24px; }
+  #light.off { opacity: .4; }
   #light label { display: flex; justify-content: space-between; font-weight: 600; margin-bottom: 8px; }
   #light input { width: 100%; accent-color: var(--gold); }
   .err { color: var(--red); }
@@ -74,29 +75,31 @@ function addLog(text) {
 
 const status = document.getElementById('status');
 const list = document.getElementById('guards');
+const light = document.getElementById('light');
 const slider = document.getElementById('bright'), pct = document.getElementById('pct');
 let device = null, select = null, bright = null, names = [], buttons = [];
 
 function say(msg, isErr) { status.textContent = msg; status.className = isErr ? 'err' : ''; }
 // Bluefy sometimes rejects with no message (showed as "undefined").
 const why = e => (e && (e.message || e.name)) || String(e);
+const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-// iOS may never settle a connect to a board that is out of range: give up instead of "Reconnecting…" forever.
+// iOS may never settle a connect to a board that is out of range or asleep: give up instead of waiting forever.
 function withTimeout(promise, ms, what) {
   return Promise.race([promise, new Promise((_, no) => setTimeout(() => no(new Error(`${what} timed out`)), ms))]);
 }
+// A connect still pending after a timeout would otherwise linger; this cancels it.
+function cancelPending() { if (device) device.gatt.disconnect(); }
 
-// (Re)connect to the device already picked: no picker needed. Rebuilds the buttons from the board's names.
-// fromSlider: the user is mid-drag, so their value wins over the board's stored one (it is sent next).
-async function attach(fromSlider = false) {
+// (Re)connect to the device already picked: no picker needed. Syncs the slider to the board and rebuilds
+// the guard buttons from its names; the controls go live only once everything is read.
+async function attach() {
   const svc = await (await withTimeout(device.gatt.connect(), 10000, 'connecting')).getPrimaryService(SERVICE);
   select = await svc.getCharacteristic(SELECT);
   bright = await svc.getCharacteristic(BRIGHT);
-  if (!fromSlider) {
-    slider.value = (await bright.readValue()).getUint8(0);
-    pct.textContent = slider.value + '%';
-  }
-  document.getElementById('light').hidden = false;
+  slider.value = (await bright.readValue()).getUint8(0);
+  pct.textContent = slider.value + '%';
+  light.hidden = false;
   try {
     const log = await svc.getCharacteristic(LOG);
     // addEventListener: Bluefy ignored the oncharacteristicvaluechanged property. The flag stops a
@@ -110,7 +113,6 @@ async function attach(fromSlider = false) {
   } catch (e) {
     addLog(`(page) log unavailable: ${why(e)}`);  // logging must never block connecting
   }
-  setConnected(true);
   names = new TextDecoder().decode(await (await svc.getCharacteristic(NAMES)).readValue()).split('\n');
   list.replaceChildren();
   buttons = names.map((name, i) => {
@@ -120,10 +122,12 @@ async function attach(fromSlider = false) {
     list.appendChild(b);
     return b;
   });
+  setConnected(true);
 }
 
-// One button: Connect while disconnected, Disconnect while connected. `up` is what the page shows;
-// it can go stale when iOS pauses Bluefy and the disconnect event never arrives (see visibilitychange).
+// One button: connect while disconnected, disconnect while connected. While disconnected the guard
+// buttons and slider are frozen, so nothing looks applied that never reached the board. `up` is what
+// the page shows; it can go stale when iOS pauses Bluefy and the disconnect event never arrives.
 const connectBtn = document.getElementById('connect');
 let leaving = false;  // true while the user is disconnecting on purpose
 let up = false;
@@ -131,68 +135,100 @@ function setConnected(on) {
   up = on;
   connectBtn.textContent = on ? 'disconnect' : 'connect';
   connectBtn.classList.toggle('off', on);
+  buttons.forEach(b => (b.disabled = !on));
+  slider.disabled = !on;
+  light.classList.toggle('off', !on);
 }
 
-// Runs from the disconnect event, the Disconnect button and the resync below; safe to run twice.
+// After an unplanned drop (board asleep, reset, out of range), retry while the page is on screen.
+// Bounded so a board left asleep doesn't keep the phone busy; after that, the connect button.
+const RETRY_EVERY_MS = 3000, RETRY_TRIES = 40;  // about 2 minutes
+let retrying = false;
+async function reconnectLoop() {
+  if (retrying) return;
+  retrying = true;
+  for (let i = 0; i < RETRY_TRIES && retrying && !up; i++) {
+    if (!document.hidden) {  // iOS pauses Bluefy in the background anyway
+      try {
+        await attach();
+        say('reconnected');
+        addLog('(page) reconnected');
+        break;
+      } catch (e) {
+        cancelPending();
+      }
+    }
+    await sleep(RETRY_EVERY_MS);
+  }
+  if (retrying && !up) say('cardguard not found; tap connect to try again', true);
+  retrying = false;
+}
+
+// Runs from the disconnect event, the disconnect button, a failed write and the resync below; safe to run twice.
 function onDrop() {
   const wasUp = up;
   select = null;
   setConnected(false);
   if (leaving) {
-    // On purpose: clear the controls so a tap can't quietly reconnect.
+    // On purpose: clear the controls and don't reconnect.
     leaving = false;
+    retrying = false;
     list.replaceChildren();
     buttons = [];
-    document.getElementById('light').hidden = true;
+    light.hidden = true;
     say('disconnected');
     addLog('(page) disconnected');
   } else if (wasUp) {
-    say('connection dropped; tap a guard to reconnect');  // buttons stay: a tap reconnects
-    addLog('(page) connection dropped');
+    say('connection lost; reconnecting…');
+    addLog('(page) connection lost');
+    reconnectLoop();
   }
 }
 
-// Back from another app: if the link died while Bluefy was paused, show it instead of a stale "Disconnect".
+// Back from another app: if the link died while Bluefy was paused, show it and start reconnecting.
 document.addEventListener('visibilitychange', () => {
   if (!document.hidden && up && !device.gatt.connected) onDrop();
 });
 
-// A reconnect from a tap failed: show Connect, keep the buttons so the next tap tries again.
-function markDown() {
-  select = null;
-  setConnected(false);
-  if (device && device.gatt.connected) device.gatt.disconnect();  // cancel a connect still pending after a timeout
-}
-
 connectBtn.onclick = async () => {
-  if (up) {  // the button says Disconnect: always disconnect, never open the picker
+  if (up) {  // the button says disconnect: always disconnect, never open the picker
     leaving = true;
     if (device.gatt.connected) device.gatt.disconnect();  // its event calls onDrop too; harmless
     onDrop();
     return;
   }
   if (!navigator.bluetooth) return say('no Web Bluetooth here; on iPhone, open this page in Bluefy', true);
+  retrying = false;  // this tap takes over from the background retries
   try {
-    say('looking for cardguard…');
-    const d = await navigator.bluetooth.requestDevice({ filters: [{ name: 'cardguard' }], optionalServices: [SERVICE] });
-    if (d !== device) d.addEventListener('gattserverdisconnected', onDrop);
-    device = d;
+    if (device) {  // the same board again: straight back, no picker
+      say('connecting…');
+    } else {
+      say('looking for cardguard…');
+      device = await navigator.bluetooth.requestDevice({ filters: [{ name: 'cardguard' }], optionalServices: [SERVICE] });
+      device.addEventListener('gattserverdisconnected', onDrop);
+    }
     await attach();
     say('connected; pick a guard');
   } catch (e) {
-    say(e && e.name === 'NotFoundError' ? 'no cardguard picked; is its screen on?' : `connect failed: ${why(e)}`, true);
+    cancelPending();
+    say(e && e.name === 'NotFoundError' ? 'no cardguard picked; is its screen on?' : `connect failed: ${why(e)}; is cardguard awake?`, true);
   }
 };
 
+// A write that fails because the link is gone counts as a drop: freeze and reconnect.
+function failed(what, e) {
+  if (device && !device.gatt.connected) onDrop();
+  else say(`${what} failed: ${why(e)}`, true);
+}
+
 async function pick(i) {
+  if (!up) return;
   try {
-    if (!select || !device.gatt.connected) { say('reconnecting…'); await attach(); }
     await select.writeValue(new Uint8Array([i]));  // raw byte; the board also accepts text digits
     buttons.forEach((b, j) => b.classList.toggle('on', j === i));
     say(`showing ${names[i]}`);
   } catch (e) {
-    markDown();  // next tap tries a fresh connection
-    say(`send failed: ${why(e)}; tap again or connect`, true);
+    failed('send', e);
   }
 }
 
@@ -201,19 +237,18 @@ let wanted = null, sending = false;
 slider.oninput = async () => {
   pct.textContent = slider.value + '%';
   wanted = +slider.value;
-  if (sending) return;
+  if (sending || !up) return;
   sending = true;
   try {
     while (wanted !== null) {
       const v = wanted;
       wanted = null;
-      if (!select || !device.gatt.connected) { say('reconnecting…'); await attach(true); }
       await bright.writeValue(new Uint8Array([v]));
     }
     say(`brightness ${slider.value}%`);
   } catch (e) {
-    markDown();
-    say(`brightness failed: ${why(e)}; try again or connect`, true);
+    wanted = null;
+    failed('brightness', e);  // after a reconnect the slider shows the board's real level again
   } finally {
     sending = false;
   }
