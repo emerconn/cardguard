@@ -179,8 +179,8 @@ static void bannerFrame(Smooth &s, const TextStyle &topStyle, const char *top, c
 
 static void ducksScene(Smooth &s) {
   bannerFrame(s, BAND, "THE DUCKS", BAND, "QUACK QUACK");
-  duck(s, 93.5f, 107.5f, 1.15f);
-  duck(s, 150.5f, 107.5f, 1.15f);
+  duck(s, 90, 107.5f, 1.15f);
+  duck(s, 154, 107.5f, 1.15f);
   text(s, LABEL, "POCKET 2s", 120.5f, 152.5f, GOLD);
 }
 
