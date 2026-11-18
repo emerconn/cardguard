@@ -1,4 +1,4 @@
 [toolchain]
-channel    = "stable"
+channel    = "1.100.0" # pinned: CI installs only this, instead of updating a whole stable toolchain each run
 components = ["rust-src"]
 targets = ["riscv32imc-unknown-none-elf"]
