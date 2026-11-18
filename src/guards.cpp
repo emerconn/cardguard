@@ -352,7 +352,7 @@ static void donkScene(Smooth &s) {
   s.circle(120, 120, 81, GOLD_L, GOLD);
 
   ringText(s, BAND, "I'M A DONK", 99, false, GOLD, 5);  // spaced out like the original
-  ringText(s, BAND_LONG, "SEVEN AND TWO OFFSUIT", 99, true, GOLD);
+  ringText(s, BAND_LONG, "SEVEN TWO OFFSUIT", 99, true, GOLD);
   const float side[] = {-30, -15, 0, 15};
   for (int i = 0; i < 4; i++)
     for (int left = 0; left < 2; left++) {
