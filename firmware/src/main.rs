@@ -100,17 +100,34 @@ const RESUME_TAG: u32 = 0xC6A2_D500;
 const BRIGHT_AT: u32 = 0x9000;
 const MAGIC: u8 = 0xCB;
 
-fn load_brightness(flash: &mut FlashStorage) -> u8 {
-    let mut b = [0u8; 2];
-    match flash.read(BRIGHT_AT, &mut b) {
-        Ok(()) if b[0] == MAGIC && (10..=100).contains(&b[1]) => b[1],
-        _ => 60,
+// Each save appends a 4-byte record [tag, value, FF, FF] after the last one; the sector is erased only
+// when no free slot is left, so ~1000 saves per erase. A torn or foreign record ends the log: the
+// value before it is used and the next save erases.
+fn brightness_log(flash: &mut FlashStorage) -> (Option<u8>, Option<u32>) {
+    let mut sector = [0u8; FlashStorage::SECTOR_SIZE as usize];
+    if flash.read(BRIGHT_AT, &mut sector).is_err() {
+        return (None, None);
     }
+    let mut last = None;
+    for (i, r) in sector.as_chunks::<4>().0.iter().enumerate() {
+        match *r {
+            [MAGIC, b, 0xFF, 0xFF] if (10..=100).contains(&b) => last = Some(b),
+            [0xFF, 0xFF, 0xFF, 0xFF] => return (last, Some(BRIGHT_AT + 4 * i as u32)),
+            _ => break,
+        }
+    }
+    (last, None)
+}
+
+fn load_brightness(flash: &mut FlashStorage) -> u8 {
+    brightness_log(flash).0.unwrap_or(60)
 }
 fn save_brightness(flash: &mut FlashStorage, pct: u8) {
-    // shortcut: erases a 4 KB sector per save (~100k erases of wear); saves are rare (2 s after the slider stops)
-    let ok = flash.erase(BRIGHT_AT, BRIGHT_AT + FlashStorage::SECTOR_SIZE).and_then(|_| flash.write_nor(BRIGHT_AT, &[MAGIC, pct, 0xFF, 0xFF]));
-    if let Err(e) = ok {
+    let at = match brightness_log(flash).1 {
+        Some(at) => Ok(at),
+        None => flash.erase(BRIGHT_AT, BRIGHT_AT + FlashStorage::SECTOR_SIZE).map(|()| BRIGHT_AT),
+    };
+    if let Err(e) = at.and_then(|at| flash.write_nor(at, &[MAGIC, pct, 0xFF, 0xFF])) {
         log!("brightness: save failed {e:?}");
     }
 }

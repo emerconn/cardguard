@@ -92,6 +92,7 @@ Target: **~20 designs**, each a crisp digital (vector-style) design, not a photo
 | 2026-11-18 | Strip buffer stored in panel byte order (big-endian RGB565), pushed by DMA as two 60-row halves | No byte-swap pass and the CPU idles during the push: ~23 -> 13 ms a frame. One SPI DMA transfer is at most 32,736 bytes, a 120-row strip is 57,600 |
 | 2026-11-18 | Waking from sleep restarts the chip, guard kept in RTC memory | esp-radio's BLE controller advertises nothing after light sleep and only shuts down when dropped. The panel keeps its image meanwhile. First advert 0.51 s after waking, reconnect 1.24 s (C++ 0.35 / 1.16 s; the gap is mostly the bootloader) |
 | 2026-11-18 | Brightness kept as 2 raw bytes (tag + value) at the start of the nvs partition, sector erased per save | No NVS library needed; saves are rare (2 s after the slider stops). The old C++ NVS value isn't read, so the first boot after updating starts at 60 % |
+| 2026-11-18 | Brightness saves append a 4-byte record (tag, value, FF, FF) after the last one in the nvs sector; the sector is erased only when full or when a torn/foreign record ends the log | ~1000 saves per erase instead of one (flash sectors last ~100k erases). Reads the old single-record layout as-is. Checked on the board: append, survive reset, full-sector wrap, torn record |
 
 ### Renderer vs SVG (renderer chosen)
 
