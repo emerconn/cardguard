@@ -66,6 +66,7 @@ Target: **~20 designs**, each a crisp digital (vector-style) design, not a photo
 | 2026-11-16 | Shared `TextStyle`s in `guards.cpp`; serif only at large sizes | Small serif text rendered blurry; one set of fonts and sizes keeps designs consistent |
 | 2026-11-17 | BLE guard select via NimBLE-Arduino, one write-only characteristic; test with nRF Connect before any app | Lighter than the stock BLE stack (+~250 KB flash total, 657 KB used); same firmware serves a later Bluefy page or iOS app |
 | 2026-11-17 | Invalid BLE pick: serial log line + 3 s red "NO GUARD n" screen, then back to the current guard; new shared styles `ALERT`, `BIG_NUMBER` | Phone gets no reply, so the screen must show the mistake; the button still wraps since it has no specific input |
+| 2026-11-18 | Phone page `docs/app` hosted on GitHub Pages by our own workflow (`.github/workflows/pages.yml`), not the built-in Jekyll branch build | Plain HTML needs no build; built-in one used deprecated Node 20 actions; ~20 s deploy, only when `docs/` changes |
 
 ### Renderer vs SVG (renderer chosen)
 
