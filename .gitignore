@@ -3,3 +3,4 @@
 compile_commands.json
 /preview/
 .venv/
+.claude/worktrees/
