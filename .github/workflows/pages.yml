@@ -1,11 +1,11 @@
 # Publishes docs/ (plain HTML, no build step) to GitHub Pages: the phone page lives at docs/app/.
-# The page tests (test/*.test.js, no dependencies) run first, so a broken page never goes live.
+# Tests run on the PR (tests.yml) before anything reaches main, so this only deploys.
 name: Pages
 
 on:
   push:
     branches: [main]
-    paths: [docs/**, test/**, .github/workflows/pages.yml]
+    paths: [docs/**, .github/workflows/pages.yml]
   workflow_dispatch:
 
 permissions:
@@ -25,8 +25,6 @@ jobs:
       url: ${{ steps.deploy.outputs.page_url }}
     steps:
       - uses: actions/checkout@v7
-      - name: Test the phone page
-        run: node --test
       - uses: actions/upload-pages-artifact@v5
         with:
           path: docs
