@@ -51,12 +51,13 @@ struct SelectCallbacks : NimBLECharacteristicCallbacks {
   }
 };
 
-// Phone writes brightness percent: raw byte (page) or text "40" (nRF Connect). Clamped to 10-100.
+// Phone writes brightness percent as one raw byte, clamped to 10-100. No text form: bytes 48-57 are the
+// digits '0'-'9', so 50 % was read as "2" and dropped to 10 % mid-drag (screen flashed dark).
 struct BrightCallbacks : NimBLECharacteristicCallbacks {
   void onWrite(NimBLECharacteristic *c, NimBLEConnInfo &) override {
     std::string v = c->getValue();
     if (v.empty()) return;
-    int p = constrain(isdigit((unsigned char)v[0]) ? atoi(v.c_str()) : (uint8_t)v[0], 10, 100);
+    int p = constrain((uint8_t)v[0], 10, 100);
     c->setValue((uint8_t)p);  // reads return the applied value as one byte
     reqBright = p;
   }
@@ -141,9 +142,9 @@ void loop() {
     }
   }
   if (Serial.available() && Serial.read() == 'n') show(current + 1);  // tools/drawtime.py steps guards this way
-  if (requested >= 0) {
-    int n = requested;
-    requested = -1;
+  // Take-and-clear in one step: a BLE write landing between a read and a separate "= -1" was lost.
+  int n = __atomic_exchange_n(&requested, -1, __ATOMIC_SEQ_CST);
+  if (n >= 0) {
     if (n < GUARD_COUNT) {
       Serial.printf("BLE: picked guard %d\n", n);
       show(n);
@@ -154,10 +155,11 @@ void loop() {
       show(current);
     }
   }
-  if (reqBright >= 0) {
-    brightness = reqBright;
-    reqBright = -1;
+  int b = __atomic_exchange_n(&reqBright, -1, __ATOMIC_SEQ_CST);
+  if (b >= 0) {
+    brightness = b;
     setBacklight(brightness);
+    Serial.printf("brightness -> %d%%\n", brightness);
     brightDirty = true;
     brightChangedAt = millis();
   }
