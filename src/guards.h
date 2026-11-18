@@ -7,3 +7,4 @@ typedef void (*GuardFn)(Arduino_GFX *gfx);
 
 extern const GuardFn GUARDS[];
 extern const int GUARD_COUNT;
+void drawNoGuard(Arduino_GFX *gfx, int n);  // "NO GUARD n" error screen
