@@ -158,7 +158,9 @@ function setConnected(on) {
 
 // After an unplanned drop (board asleep, reset, out of range), retry while the page is on screen.
 // Bounded so a board left asleep doesn't keep the phone busy; after that, the connect button.
-const RETRY_EVERY_MS = 3000, RETRY_TRIES = 40;  // about 2 minutes
+// Every 1 s: after a connect tap Bluefy rejects at once instead of waiting for the board, so the gap
+// between tries is the delay after waking (3 s felt slow). Rejected tries cost next to nothing.
+const RETRY_EVERY_MS = 1000, RETRY_TRIES = 120;  // about 2 minutes
 // Each loop has a number; starting a loop or stopping retries bumps it, which retires the running one,
 // so taps and drops never leave two loops going. Each try also picks up a link iOS reconnected by itself
 // (Bluefy shows "connected" but the page gets no event for that).
