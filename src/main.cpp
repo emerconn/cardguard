@@ -51,7 +51,7 @@ struct ServerCallbacks : NimBLEServerCallbacks {
     logf("BLE: connected %s (%d open)\n", info.getAddress().toString().c_str(), s->getConnectedCount());
     NimBLEDevice::startAdvertising();
   }
-  void onDisconnect(NimBLEServer *s, NimBLEConnInfo &info, int reason) override {
+  void onDisconnect(NimBLEServer *, NimBLEConnInfo &info, int reason) override {
     logf("BLE: disconnected %s, reason 0x%x\n", info.getAddress().toString().c_str(), reason);
   }
 };
@@ -75,6 +75,13 @@ struct BrightCallbacks : NimBLECharacteristicCallbacks {
     int p = constrain((uint8_t)v[0], 10, 100);
     c->setValue((uint8_t)p);  // reads return the applied value as one byte
     reqBright = p;
+  }
+};
+
+// Shows on serial whether a phone actually subscribed to the log (and is the first line it receives).
+struct LogCallbacks : NimBLECharacteristicCallbacks {
+  void onSubscribe(NimBLECharacteristic *, NimBLEConnInfo &info, uint16_t subValue) override {
+    logf("BLE: %s %s the log\n", info.getAddress().toString().c_str(), subValue ? "subscribed to" : "unsubscribed from");
   }
 };
 
@@ -113,7 +120,7 @@ void setup() {
   bright->setValue((uint8_t)brightness);
   bright->setCallbacks(new BrightCallbacks());
   logChar = svc->createCharacteristic("7c0bd792-ba8a-4791-be95-3c354c4c2fd2", NIMBLE_PROPERTY::NOTIFY);
-  svc->start();
+  logChar->setCallbacks(new LogCallbacks());
   // Name only: name + the 128-bit service UUID overflow the 31-byte advert and it never starts.
   NimBLEDevice::getAdvertising()->setName("cardguard");
   NimBLEDevice::getAdvertising()->setMinInterval(800);   // 0.5-0.7 s (units of 0.625 ms): power vs connect delay

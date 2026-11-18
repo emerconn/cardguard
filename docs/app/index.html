@@ -90,8 +90,14 @@ async function attach() {
   document.getElementById('light').hidden = false;
   try {
     const log = await svc.getCharacteristic(LOG);
-    log.oncharacteristicvaluechanged = e => addLog(new TextDecoder().decode(e.target.value));  // property, not addEventListener: reconnects don't double it
+    // addEventListener: Bluefy ignored the oncharacteristicvaluechanged property. The flag stops a
+    // reconnect that hands back the same object from adding a second listener (doubled lines).
+    if (!log.cardguardListening) {
+      log.addEventListener('characteristicvaluechanged', e => addLog(new TextDecoder().decode(e.target.value)));
+      log.cardguardListening = true;
+    }
     await log.startNotifications();
+    addLog('(page) subscribed to board log');
   } catch (e) {
     addLog(`(page) log unavailable: ${why(e)}`);  // logging must never block connecting
   }
