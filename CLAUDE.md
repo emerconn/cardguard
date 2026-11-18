@@ -1,7 +1,7 @@
 # cardguard
 
-See README.md for the build, tools, hardware budget and decision log. Record new design or
-architecture decisions in the README's Decisions table.
+See README.md for the build, tools and hardware budget, and docs/decisions.md for the decision log.
+Record new design or architecture decisions in its table.
 
 ## Git (GitHub enforces PRs, squash merges and the `web` and `pr-title` checks; these it can't)
 
