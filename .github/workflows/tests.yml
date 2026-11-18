@@ -49,7 +49,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - run: rustup toolchain install --profile minimal # pinned toolchain + RISC-V target from rust-toolchain.toml
+      - run: rustup toolchain install # toolchain + RISC-V target from rust-toolchain.toml
         working-directory: firmware
       - uses: Swatinem/rust-cache@v2 # compiled dependencies, keyed on Cargo.lock: only our crates rebuild
         with:
