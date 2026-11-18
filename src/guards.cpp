@@ -20,7 +20,7 @@ struct TextStyle {
 static const TextStyle BAND = {&TitleFont4x, 0.25f, 2.5f};       // ring and banner text
 static const TextStyle BAND_LONG = {&TitleFont4x, 0.2f, 1.5f};   // ring text too long for BAND
 static const TextStyle HEADLINE = {&PokerFont4x, 0.25f, 0};      // big centre word
-static const TextStyle LABEL = {&PokerFont4x, 0.16f, 0};         // centre captions
+static const TextStyle LABEL = {&PokerFont4x, 0.19f, 0};         // centre captions
 static const TextStyle CARD_INDEX = {&TitleFont4x, 0.17f, 0};    // corner rank on court cards
 static const TextStyle CARD_RANK = {&TitleFont4x, 0.3f, 0};      // big rank on number cards
 static const TextStyle ALERT = {&TitleFont4x, 0.42f, 0};         // short warning words across the centre
@@ -181,7 +181,7 @@ static void ducksScene(Smooth &s) {
   bannerFrame(s, BAND, "THE DUCKS", BAND, "QUACK QUACK");
   duck(s, 90, 107.5f, 1.15f);
   duck(s, 154, 107.5f, 1.15f);
-  text(s, LABEL, "POCKET 2s", 120.5f, 152.5f, GOLD);
+  text(s, LABEL, "POCKET 2s", 120.5f, 149.5f, GOLD);
 }
 
 static void ducks(Arduino_GFX *gfx) { smoothDraw(gfx, ducksScene); }
