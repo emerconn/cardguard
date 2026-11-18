@@ -120,7 +120,7 @@ void show(int i) {
 void setup() {
   Serial.begin(115200);
   Serial.setTxTimeoutMs(0);  // drop output nobody reads; the default 2 s wait froze the button after ~10 prints
-  setCpuFrequencyMhz(80);    // power: ~2x draw time, still well under 500 ms; BLE needs >= 80
+  setCpuFrequencyMhz(80);    // power: ~2x draw time, still under 200 ms; BLE needs >= 80
   prefs.begin("cardguard");
   brightness = prefs.getUChar("bright", brightness);
   ledcAttach(PIN_BL, 20000, 8);  // 20 kHz PWM: above hearing

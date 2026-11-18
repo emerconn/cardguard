@@ -18,7 +18,7 @@ architecture decisions in the README's Decisions table.
    small serif text goes blurry.
 3. New characters in text: add them to the lists in `tools/fonts.sh` and run it.
 4. Check it with `tools/preview/run.sh` (view `preview/guard_N.png`, scaled up) against the reference.
-5. Flash and time it: `pio run -t upload && python3 tools/drawtime.py`. Keep designs well under ~500 ms.
+5. Flash and time it: `pio run -t upload && python3 tools/drawtime.py`. Keep every design under 200 ms.
 
 ## Case (`case/`)
 

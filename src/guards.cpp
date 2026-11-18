@@ -37,7 +37,7 @@ static void ringText(Smooth &s, const TextStyle &t, const char *str, float r, bo
 // Maps shape-local offsets to the screen: centred on (x, y), scaled by k, rotated by deg.
 struct Place {
   float x0, y0, k, co, sn;
-  Place(float x, float y, float k, float deg) : x0(x), y0(y), k(k), co(cosf(deg * DEG_TO_RAD)), sn(sinf(deg * DEG_TO_RAD)) {}
+  Place(float x, float y, float k, float deg) : x0(x), y0(y), k(k), co(fcos(deg * DEG_TO_RAD)), sn(fsin(deg * DEG_TO_RAD)) {}
   float x(float dx, float dy) const { return x0 + (dx * co - dy * sn) * k; }
   float y(float dx, float dy) const { return y0 + (dx * sn + dy * co) * k; }
 };
@@ -107,7 +107,7 @@ static void chipLeaderScene(Smooth &s) {
       float a = a0 + (a1 - a0) * (k + 0.5f) / 6;
       for (int off = -1; off <= 1; off += 2) {
         float r = 99 + off * 6, t = a * DEG_TO_RAD;
-        s.ellipse(120 + r * cosf(t), 120 + r * sinf(t), 7.5f, 3.2f, a - 90 * side + off * 35 * side, GREEN);
+        s.ellipse(120 + r * fcos(t), 120 + r * fsin(t), 7.5f, 3.2f, a - 90 * side + off * 35 * side, GREEN);
       }
     }
   }
@@ -160,7 +160,7 @@ static void bannerFrame(Smooth &s, const TextStyle &topStyle, const char *top, c
   const float side[] = {-24, -8, 8, 24};
   for (int i = 0; i < 4; i++)
     for (int left = 0; left < 2; left++) {
-      float a = (left ? 180 - side[i] : side[i]) * DEG_TO_RAD, x = 120 + 98 * cosf(a), y = 120 + 98 * sinf(a);
+      float a = (left ? 180 - side[i] : side[i]) * DEG_TO_RAD, x = 120 + 98 * fcos(a), y = 120 + 98 * fsin(a);
       if (i == 0) club(s, x, y, INK);
       if (i == 1) diamond(s, x, y, RED);
       if (i == 2) spade(s, x, y, INK);
@@ -169,10 +169,10 @@ static void bannerFrame(Smooth &s, const TextStyle &topStyle, const char *top, c
 
   // Gold ring with a twisted-rope inner edge around the black centre.
   s.circle(120, 120, 85, GOLD_L, GOLD_D, 80);
-  s.circle(120, 120, 80, GOLD_D);
+  s.circle(120, 120, 80, GOLD_D, GOLD_D, 73);  // hole: the black centre covers it
   for (int i = 0; i < 48; i++) {
     float a = i * 7.5f, t = a * DEG_TO_RAD;
-    s.ellipse(120 + 77 * cosf(t), 120 + 77 * sinf(t), 4.2f, 1.9f, a + 90 + 50, GOLD_L);
+    s.ellipse(120 + 77 * fcos(t), 120 + 77 * fsin(t), 4.2f, 1.9f, a + 90 + 50, GOLD_L);
   }
   s.circle(120, 120, 73, INK);
 }
@@ -250,13 +250,13 @@ static void star(Smooth &s, float x, float y, float r, uint16_t c) {
   float in[10];
   for (int i = 0; i < 5; i++) {
     float a = (-90 + 36 + 72 * i) * DEG_TO_RAD;
-    in[2 * i] = x + 0.4f * r * cosf(a), in[2 * i + 1] = y + 0.4f * r * sinf(a);
+    in[2 * i] = x + 0.4f * r * fcos(a), in[2 * i + 1] = y + 0.4f * r * fsin(a);
   }
   s.poly(in, 5, c);
   for (int i = 0; i < 5; i++) {
     float a = (-90 + 72 * i) * DEG_TO_RAD;
     int j = (i + 4) % 5;  // inner points either side of tip i
-    s.tri(x + r * cosf(a), y + r * sinf(a), in[2 * j], in[2 * j + 1], in[2 * i], in[2 * i + 1], c);
+    s.tri(x + r * fcos(a), y + r * fsin(a), in[2 * j], in[2 * j + 1], in[2 * i], in[2 * i + 1], c);
   }
 }
 
@@ -344,10 +344,10 @@ static void donkScene(Smooth &s) {
   s.fill(RGB565_BLACK);
   s.circle(120, 120, 119.5f, GOLD_L, GOLD_D, 112);
   s.circle(120, 120, 112, INK, INK, 86);
-  s.circle(120, 120, 86, GOLD_D);  // rope ring
+  s.circle(120, 120, 86, GOLD_D, GOLD_D, 81);  // rope ring; hole: the gold face covers it
   for (int i = 0; i < 52; i++) {
     float a = i * (360.0f / 52), t = a * DEG_TO_RAD;
-    s.ellipse(120 + 83.5f * cosf(t), 120 + 83.5f * sinf(t), 3.6f, 1.5f, a + 90 + 50, GOLD_L);
+    s.ellipse(120 + 83.5f * fcos(t), 120 + 83.5f * fsin(t), 3.6f, 1.5f, a + 90 + 50, GOLD_L);
   }
   s.circle(120, 120, 81, GOLD_L, GOLD);
 
@@ -357,7 +357,7 @@ static void donkScene(Smooth &s) {
   for (int i = 0; i < 4; i++)
     for (int left = 0; left < 2; left++) {
       float a = (left ? 180 - side[i] : side[i]) * DEG_TO_RAD;
-      star(s, 120 + 99 * cosf(a), 120 + 99 * sinf(a), 6.5f, GOLD);
+      star(s, 120 + 99 * fcos(a), 120 + 99 * fsin(a), 6.5f, GOLD);
     }
 
   pipCard(s, 86, 124, -15, '7', -1, spade, INK);
