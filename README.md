@@ -36,7 +36,7 @@ python3 tools/drawtime.py   # resets the board, then sends 'n' over serial to st
 
 Pick a guard from a phone over Bluetooth LE: in nRF Connect (iOS/Android) connect to `cardguard`,
 open the service `9a49e65d-…` and write to characteristic `6eeb6fbb-…` the guard number as Text
-(`2`) or as a byte (`02`). Only while the screen is on; light sleep drops Bluetooth.
+(`2`) or as a byte (`02`). Numbers past the last guard are ignored (only the button wraps). Only while the screen is on; light sleep drops Bluetooth.
 
 Text uses fonts generated into `src/fonts.h`. When a design needs a new character, add it to the
 lists in `tools/fonts.sh` and run it.

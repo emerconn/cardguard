@@ -23,7 +23,8 @@ struct SelectCallbacks : NimBLECharacteristicCallbacks {
   void onWrite(NimBLECharacteristic *c, NimBLEConnInfo &) override {
     std::string v = c->getValue();
     if (v.empty()) return;
-    requested = isdigit((unsigned char)v[0]) ? atoi(v.c_str()) : (uint8_t)v[0];
+    int n = isdigit((unsigned char)v[0]) ? atoi(v.c_str()) : (uint8_t)v[0];
+    if (n < GUARD_COUNT) requested = n;  // a specific pick past the end is ignored; only the button wraps
   }
 };
 
