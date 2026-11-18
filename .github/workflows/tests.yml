@@ -32,7 +32,7 @@ jobs:
           files=$(gh pr diff "$PR" --repo "$GITHUB_REPOSITORY" --name-only)
           touches() { grep -qE "$1|^\.github/workflows/tests\.yml$" <<< "$files" && echo true || echo false; }
           echo "rust=$(touches '^(firmware|guards)/')" >> "$GITHUB_OUTPUT"
-          echo "web=$(touches '^(docs/app|test)/')" >> "$GITHUB_OUTPUT"
+          echo "web=$(touches '^(web|test)/')" >> "$GITHUB_OUTPUT"
 
   web:
     needs: changes

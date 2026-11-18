@@ -1,11 +1,11 @@
-// Web app (docs/app/index.html) connect / disconnect / reconnect states, against a fake DOM and a fake
+// Web app (web/index.html) connect / disconnect / reconnect states, against a fake DOM and a fake
 // Web Bluetooth board. No dependencies: `node --test` (runs on every PR in the Tests workflow).
 const test = require('node:test');
 const assert = require('node:assert');
 const fs = require('node:fs');
 const path = require('node:path');
 
-const html = fs.readFileSync(path.join(__dirname, '../docs/app/index.html'), 'utf8');
+const html = fs.readFileSync(path.join(__dirname, '../web/index.html'), 'utf8');
 const script = html.split('<script>')[1].split('</script>')[0];
 
 // Loads the page script into a fresh fake browser; returns handles to drive and inspect it.
