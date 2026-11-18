@@ -87,12 +87,15 @@ function withTimeout(promise, ms, what) {
 }
 
 // (Re)connect to the device already picked: no picker needed. Rebuilds the buttons from the board's names.
-async function attach() {
+// fromSlider: the user is mid-drag, so their value wins over the board's stored one (it is sent next).
+async function attach(fromSlider = false) {
   const svc = await (await withTimeout(device.gatt.connect(), 10000, 'connecting')).getPrimaryService(SERVICE);
   select = await svc.getCharacteristic(SELECT);
   bright = await svc.getCharacteristic(BRIGHT);
-  slider.value = (await bright.readValue()).getUint8(0);
-  pct.textContent = slider.value + '%';
+  if (!fromSlider) {
+    slider.value = (await bright.readValue()).getUint8(0);
+    pct.textContent = slider.value + '%';
+  }
   document.getElementById('light').hidden = false;
   try {
     const log = await svc.getCharacteristic(LOG);
@@ -204,7 +207,7 @@ slider.oninput = async () => {
     while (wanted !== null) {
       const v = wanted;
       wanted = null;
-      if (!select || !device.gatt.connected) { say('reconnecting…'); await attach(); slider.value = v; }
+      if (!select || !device.gatt.connected) { say('reconnecting…'); await attach(true); }
       await bright.writeValue(new Uint8Array([v]));
     }
     say(`brightness ${slider.value}%`);

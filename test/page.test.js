@@ -101,6 +101,21 @@ test('reconnect to an unreachable board times out instead of hanging', async () 
   assert.equal(p.button.textContent, 'connect');
 });
 
+test('dragging the slider after a drop keeps the dragged value, not the board\'s old one', async () => {
+  const p = await connected();  // board brightness reads 60
+  p.device.gatt.connected = false;  // e.g. the board was reset
+  const slider = p.els.bright;
+  slider.value = '50';
+  const first = slider.oninput();  // starts the reconnect
+  slider.value = '30';  // the drag continues while it reconnects
+  slider.oninput();
+  await first;
+  await p.tick(10);
+  assert.equal(slider.value, '30');
+  assert.equal(p.els.pct.textContent, '30%');
+  assert.equal(p.board.writes.at(-1), 30);
+});
+
 test('Disconnect while connected clears the controls', async () => {
   const p = await connected();
   await p.button.onclick();
