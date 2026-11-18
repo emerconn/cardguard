@@ -35,6 +35,12 @@ Time every guard on the real board (needs the current firmware flashed, no seria
 python3 tools/drawtime.py   # resets the board, then sends 'n' over serial to step through guards
 ```
 
+Check the phone page's connect / disconnect / reconnect logic (no board or phone needed):
+
+```sh
+node tools/page_test.js
+```
+
 Pick a guard from a phone over Bluetooth LE: in nRF Connect (iOS/Android) connect to `cardguard`,
 open the service `9a49e65d-…` and write to characteristic `6eeb6fbb-…` the guard number as Text
 (`2`) or as a byte (`02`). Numbers past the last guard show "NO GUARD n" for 3 s and are logged to serial (only the button wraps). Only while the screen is on; light sleep drops Bluetooth. The phone page reads the guard names from the board (`GUARD_NAMES`). Its brightness slider sets the backlight (10-100 %, kept across restarts). While connected the Connect button reads **Disconnect**; a deliberate disconnect clears the controls, a dropped connection reconnects on the next tap. Its **debug** toggle (top right) shows the board's log lines live (sent as BLE notifications; lines from before the phone connected only reach USB serial). It keeps advertising while connected (up to 3 connections), so a reloaded phone page still finds it; connects, disconnects and picks are logged to serial.
