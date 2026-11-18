@@ -49,9 +49,9 @@ void setup() {
   svc->createCharacteristic("6eeb6fbb-9458-47d6-9379-e73cab7dfa04", NIMBLE_PROPERTY::WRITE)
       ->setCallbacks(new SelectCallbacks());
   svc->start();
-  NimBLEDevice::getAdvertising()->addServiceUUID(svc->getUUID());
+  // Name only: name + the 128-bit service UUID overflow the 31-byte advert and it never starts.
   NimBLEDevice::getAdvertising()->setName("cardguard");
-  NimBLEDevice::getAdvertising()->start();
+  if (!NimBLEDevice::getAdvertising()->start()) Serial.println("BLE advertising failed");
 }
 
 void waitRelease() {
