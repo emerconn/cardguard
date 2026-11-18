@@ -21,7 +21,7 @@ static const TextStyle BAND = {&TitleFont4x, 0.25f, 2.5f};       // ring and ban
 static const TextStyle BAND_LONG = {&TitleFont4x, 0.2f, 1.5f};   // ring text too long for BAND
 static const TextStyle HEADLINE = {&PokerFont4x, 0.25f, 0};      // big centre word
 static const TextStyle LABEL = {&PokerFont4x, 0.16f, 0};         // centre captions
-static const TextStyle CARD_INDEX = {&TitleFont4x, 0.13f, 0};    // corner rank on court cards
+static const TextStyle CARD_INDEX = {&TitleFont4x, 0.17f, 0};    // corner rank on court cards
 static const TextStyle CARD_RANK = {&TitleFont4x, 0.3f, 0};      // big rank on number cards
 static const TextStyle ALERT = {&TitleFont4x, 0.42f, 0};         // short warning words across the centre
 static const TextStyle BIG_NUMBER = {&TitleFont4x, 0.6f, 0};     // lone number filling the centre
@@ -197,7 +197,7 @@ typedef void (*SuitFn)(Smooth &, float, float, uint16_t, float, float);
 // the rest of the card.
 static void courtCard(Smooth &s, float cx, float cy, float deg, char rank, SuitFn suit, uint16_t col) {
   Place c(cx, cy, 1.1f, deg);                                    // card space: 50 x 70 before scaling
-  Place f(c.x(4.25f, 2.7f), c.y(4.25f, 2.7f), c.k * 1.3f, deg);  // figure space, centred in the frame
+  Place f(c.x(5, 2.7f), c.y(5, 2.7f), c.k * 1.3f, deg);  // figure space, centred in the frame
   auto quad = [&](float x0, float y0, float x1, float y1, float x2, float y2, float x3, float y3, uint16_t col) {
     float p[] = {f.x(x0, y0), f.y(x0, y0), f.x(x1, y1), f.y(x1, y1), f.x(x2, y2), f.y(x2, y2), f.x(x3, y3), f.y(x3, y3)};
     s.poly(p, 4, col);
@@ -210,8 +210,8 @@ static void courtCard(Smooth &s, float cx, float cy, float deg, char rank, SuitF
   s.rrect(cx, cy, 52.5f * c.k, 72.5f * c.k, 5, deg, CARD_EDGE);
   s.rrect(cx, cy, 50 * c.k, 70 * c.k, 4, deg, PAPER);
   // Figure frame: right of the index column, 3.5 from the other edges.
-  s.rrect(c.x(4.25f, 0), c.y(4.25f, 0), 34.5f * c.k, 63 * c.k, 2, deg, col);
-  s.rrect(c.x(4.25f, 0), c.y(4.25f, 0), 31.5f * c.k, 60 * c.k, 1.5f, deg, PAPER);
+  s.rrect(c.x(5, 0), c.y(5, 0), 33 * c.k, 63 * c.k, 2, deg, col);
+  s.rrect(c.x(5, 0), c.y(5, 0), 30 * c.k, 60 * c.k, 1.5f, deg, PAPER);
 
   quad(-11, 21, 11, 21, 8, 4, -8, 4, col);  // robe with a gold sash
   quad(-2.5f, 21, 2.5f, 21, 1.5f, 4, -1.5f, 4, GOLD);
@@ -234,7 +234,7 @@ static void courtCard(Smooth &s, float cx, float cy, float deg, char rank, SuitF
 
   // Top-left index only: rank over a small suit.
   s.glyph(CARD_INDEX.font, CARD_INDEX.scale, rank, c.x(-19, -26), c.y(-19, -26), deg, col);
-  suit(s, c.x(-19, -16), c.y(-19, -16), col, 0.42f, deg);
+  suit(s, c.x(-19, -14), c.y(-19, -14), col, 0.55f, deg);
 }
 
 static void jackKingOffScene(Smooth &s) {
