@@ -71,7 +71,7 @@ function loadPage() {
   };
   const navigator = { bluetooth: { requestDevice: async () => { board.pickerOpened++; return device; } } };
   const localStorage = { getItem: () => null, setItem() {} };
-  const fastTimeout = (f, ms) => setTimeout(f, ms / 1000);  // 10 s connect timeout -> 10 ms, 3 s retry -> 3 ms
+  const fastTimeout = (f, ms) => setTimeout(f, ms / 1000);  // 10 s connect timeout -> 10 ms, 1 s retry -> 1 ms
 
   new Function('document', 'navigator', 'localStorage', 'setTimeout', script)(document, navigator, localStorage, fastTimeout);
   const tick = (ms = 0) => new Promise((r) => setTimeout(r, ms));
@@ -176,7 +176,7 @@ test('retries give up after a while; connect then goes straight back without the
   const p = await connected();
   p.board.reachable = false;
   p.boardDrops();
-  await p.until(() => /not found/.test(p.status.textContent));
+  await p.until(() => /not found/.test(p.status.textContent), 10000);  // ~120 tries
   assert.equal(p.button.textContent, 'connect');
   assert.ok(p.frozen());
 
@@ -211,8 +211,8 @@ test('only one retry loop runs, however often connect is tapped', async () => {
   let attempts = 0;
   const connect = p.device.gatt.connect.bind(p.device.gatt);
   p.device.gatt.connect = () => { attempts++; return connect(); };
-  await p.tick(12);  // ~4 retry periods of 3 ms each
-  assert.ok(attempts <= 6, `${attempts} connect attempts: more than one loop is running`);
+  await p.tick(12);  // ~12 retry periods of 1 ms: one loop makes ≤ ~12 tries, three loops ~36
+  assert.ok(attempts <= 18, `${attempts} connect attempts: more than one loop is running`);
 });
 
 test('tapping a stale disconnect never opens the picker', async () => {
