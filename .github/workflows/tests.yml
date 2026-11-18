@@ -1,0 +1,20 @@
+# Runs on every pull request into main; the main ruleset requires it to pass before merging, so main
+# stays tested. Page tests need no dependencies. The hardware smoke test (test/hardware/) needs the
+# board, so it runs locally after flashing, not here.
+name: Tests
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  page:
+    name: Phone page
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: node --test
