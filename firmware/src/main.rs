@@ -255,8 +255,10 @@ async fn main(spawner: Spawner) -> ! {
                 // Only the button wraps; a pick past the end is a mistake the client should see.
                 log!("ble: no guard {n} (valid 0-{}), keeping guard {current}", GUARDS.len() - 1);
                 display.draw(&|s| guards::no_guard(s, n)).await;
-                Timer::after_secs(3).await; // shortcut: ignores the button for 3 s, fine for a rare error
-                show(&mut display, current).await;
+                // A press ends it early; the loop then takes that press as usual (next guard, or sleep if held).
+                if let Either::First(()) = select(Timer::after_secs(3), btn.wait_for_low()).await {
+                    show(&mut display, current).await;
+                }
             }
             Cmd::Bright(b) => {
                 brightness = b;
