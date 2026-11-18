@@ -281,11 +281,11 @@ static void donkey(Smooth &s) {
   for (int pass = 0; pass < 2; pass++) {  // dark grown pass = outline, then fill
     float g = pass ? 0 : 1.6f;
     uint16_t c = pass ? BROWN : BROWN_D;
-    float body[] = {112 - g, 125, 128 + g, 125,  // neck starts behind the muzzle
-                     136 + g, 178 + g, 104 - g, 178 + g};
-    s.poly(body, 4, c);
-    s.rrect(103, 180, 30 + 2 * g, 11 + 2 * g, 5.5f + g, 133, c);  // legs out to the hooves
-    s.rrect(137, 180, 30 + 2 * g, 11 + 2 * g, 5.5f + g, 47, c);
+    float neck[] = {112 - g, 125, 128 + g, 125, 131 + g, 152, 109 - g, 152};  // starts behind the muzzle
+    s.poly(neck, 4, c);
+    s.ellipse(120, 164, 23 + g, 16 + g, 0, c);   // rounded chest
+    s.ellipse(101, 179, 15 + g, 8.5f + g, 132, c);  // legs curving out to the hooves
+    s.ellipse(139, 179, 15 + g, 8.5f + g, 48, c);
     s.ellipse(101, 66, 8 + g, 20 + g, -18, c);  // ears
     s.ellipse(139, 66, 8 + g, 20 + g, 18, c);
     s.ellipse(120, 104, 27 + g, 30 + g, 0, c);  // head
