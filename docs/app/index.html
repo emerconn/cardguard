@@ -30,7 +30,7 @@
   #log { margin: 14px 0 0; padding: 12px; max-height: 40vh; overflow: auto; border-radius: 12px;
          background: #000; border: 2px solid #333; font: 12px/1.45 ui-monospace, Menlo, monospace;
          white-space: pre-wrap; word-break: break-word; }
-  #log:empty::before { content: 'No log lines yet. They appear here as the board sends them.'; opacity: .5; }
+  #log:empty::before { content: 'no log lines yet; they show up as the board sends them'; opacity: .5; }
 </style>
 </head>
 <body>
@@ -38,10 +38,10 @@
   <h1>cardguard</h1>
   <button id="logToggle" aria-pressed="false">debug</button>
 </header>
-<p id="status">Not connected</p>
-<button id="connect">Connect</button>
+<p id="status">not connected</p>
+<button id="connect">connect</button>
 <div id="light" hidden>
-  <label for="bright">Brightness <span id="pct"></span></label>
+  <label for="bright">brightness <span id="pct"></span></label>
   <input id="bright" type="range" min="10" max="100" step="5">
 </div>
 <div id="guards"></div>
@@ -88,7 +88,7 @@ function withTimeout(promise, ms, what) {
 
 // (Re)connect to the device already picked: no picker needed. Rebuilds the buttons from the board's names.
 async function attach() {
-  const svc = await (await withTimeout(device.gatt.connect(), 10000, 'Connecting')).getPrimaryService(SERVICE);
+  const svc = await (await withTimeout(device.gatt.connect(), 10000, 'connecting')).getPrimaryService(SERVICE);
   select = await svc.getCharacteristic(SELECT);
   bright = await svc.getCharacteristic(BRIGHT);
   slider.value = (await bright.readValue()).getUint8(0);
@@ -112,7 +112,7 @@ async function attach() {
   list.replaceChildren();
   buttons = names.map((name, i) => {
     const b = document.createElement('button');
-    b.textContent = `${i}  ${name}`;
+    b.textContent = name;
     b.onclick = () => pick(i);
     list.appendChild(b);
     return b;
@@ -126,7 +126,7 @@ let leaving = false;  // true while the user is disconnecting on purpose
 let up = false;
 function setConnected(on) {
   up = on;
-  connectBtn.textContent = on ? 'Disconnect' : 'Connect';
+  connectBtn.textContent = on ? 'disconnect' : 'connect';
   connectBtn.classList.toggle('off', on);
 }
 
@@ -141,10 +141,10 @@ function onDrop() {
     list.replaceChildren();
     buttons = [];
     document.getElementById('light').hidden = true;
-    say('Disconnected.');
+    say('disconnected');
     addLog('(page) disconnected');
   } else if (wasUp) {
-    say('Connection dropped. Tap a guard to reconnect.');  // buttons stay: a tap reconnects
+    say('connection dropped; tap a guard to reconnect');  // buttons stay: a tap reconnects
     addLog('(page) connection dropped');
   }
 }
@@ -168,28 +168,28 @@ connectBtn.onclick = async () => {
     onDrop();
     return;
   }
-  if (!navigator.bluetooth) return say('No Web Bluetooth here. On iPhone open this page in the Bluefy browser.', true);
+  if (!navigator.bluetooth) return say('no Web Bluetooth here; on iPhone, open this page in Bluefy', true);
   try {
-    say('Looking for cardguard…');
+    say('looking for cardguard…');
     const d = await navigator.bluetooth.requestDevice({ filters: [{ name: 'cardguard' }], optionalServices: [SERVICE] });
     if (d !== device) d.addEventListener('gattserverdisconnected', onDrop);
     device = d;
     await attach();
-    say('Connected. Pick a guard.');
+    say('connected; pick a guard');
   } catch (e) {
-    say(e && e.name === 'NotFoundError' ? 'No cardguard picked. Is its screen on?' : `Connect failed: ${why(e)}`, true);
+    say(e && e.name === 'NotFoundError' ? 'no cardguard picked; is its screen on?' : `connect failed: ${why(e)}`, true);
   }
 };
 
 async function pick(i) {
   try {
-    if (!select || !device.gatt.connected) { say('Reconnecting…'); await attach(); }
+    if (!select || !device.gatt.connected) { say('reconnecting…'); await attach(); }
     await select.writeValue(new Uint8Array([i]));  // raw byte; the board also accepts text digits
     buttons.forEach((b, j) => b.classList.toggle('on', j === i));
-    say(`Showing ${names[i]}`);
+    say(`showing ${names[i]}`);
   } catch (e) {
     markDown();  // next tap tries a fresh connection
-    say(`Send failed: ${why(e)}. Tap again, or Connect.`, true);
+    say(`send failed: ${why(e)}; tap again or connect`, true);
   }
 }
 
@@ -204,13 +204,13 @@ slider.oninput = async () => {
     while (wanted !== null) {
       const v = wanted;
       wanted = null;
-      if (!select || !device.gatt.connected) { say('Reconnecting…'); await attach(); slider.value = v; }
+      if (!select || !device.gatt.connected) { say('reconnecting…'); await attach(); slider.value = v; }
       await bright.writeValue(new Uint8Array([v]));
     }
-    say(`Brightness ${slider.value}%`);
+    say(`brightness ${slider.value}%`);
   } catch (e) {
     markDown();
-    say(`Brightness failed: ${why(e)}. Try again, or Connect.`, true);
+    say(`brightness failed: ${why(e)}; try again or connect`, true);
   } finally {
     sending = false;
   }
