@@ -7,5 +7,5 @@ typedef void (*GuardFn)(Arduino_GFX *gfx);
 
 extern const GuardFn GUARDS[];
 extern const int GUARD_COUNT;
-extern const char *const GUARD_NAMES[];  // one per guard, sent to the phone page
+extern const char *const GUARD_NAMES[];  // one per guard, sent to the web app
 void drawNoGuard(Arduino_GFX *gfx, int n);  // "NO GUARD n" error screen

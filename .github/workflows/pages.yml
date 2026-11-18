@@ -1,4 +1,4 @@
-# Publishes docs/ (plain HTML, no build step) to GitHub Pages: the phone page lives at docs/app/.
+# Publishes docs/ (plain HTML, no build step) to GitHub Pages: the web app lives at docs/app/.
 # Tests run on the PR (tests.yml) before anything reaches main, so this only deploys.
 name: Pages
 

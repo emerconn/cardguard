@@ -1,4 +1,4 @@
-// Phone page (docs/app/index.html) connect / disconnect / reconnect states, against a fake DOM and a fake
+// Web app (docs/app/index.html) connect / disconnect / reconnect states, against a fake DOM and a fake
 // Web Bluetooth board. No dependencies: `node --test test/` (also runs in the Pages workflow before deploy).
 const test = require('node:test');
 const assert = require('node:assert');

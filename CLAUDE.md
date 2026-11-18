@@ -13,7 +13,7 @@ architecture decisions in the README's Decisions table.
 1. Save the reference image to `assets/<design_name>.png` (snake_case), as given. It is kept to
    compare against and improve the design later.
 2. Add a scene to `src/guards.cpp` using `src/smooth.h`, reuse the shared helpers (suits, colours,
-   `duck`, ...), and append it to `GUARDS` and its name to `GUARD_NAMES` (the phone page reads them from the board). Text uses only the shared `TextStyle`s (`BAND`,
+   `duck`, ...), and append it to `GUARDS` and its name to `GUARD_NAMES` (the web app reads them from the board). Text uses only the shared `TextStyle`s (`BAND`,
    `BAND_LONG`, `HEADLINE`, `LABEL`, `CARD_INDEX`, `CARD_RANK`, `ALERT`, `BIG_NUMBER`), never an ad-hoc font or scale;
    small serif text goes blurry.
 3. New characters in text: add them to the lists in `tools/fonts.sh` and run it.
