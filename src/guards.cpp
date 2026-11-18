@@ -181,7 +181,7 @@ static void ducksScene(Smooth &s) {
   bannerFrame(s, BAND, "THE DUCKS", BAND, "QUACK QUACK");
   duck(s, 90, 107.5f, 1.15f);
   duck(s, 154, 107.5f, 1.15f);
-  text(s, LABEL, "POCKET 2s", 120.5f, 152.5f, GOLD);
+  text(s, LABEL, "POCKET 2s", 120.5f, 149.5f, GOLD);
 }
 
 static void ducks(Arduino_GFX *gfx) { smoothDraw(gfx, ducksScene); }
