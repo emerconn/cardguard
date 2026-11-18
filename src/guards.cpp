@@ -320,9 +320,9 @@ static void donkey(Smooth &s) {
     float hx = 120 + 30 * side;
     // Bell-shaped hooves outlined in gold, with a shaggy dark fringe over the top and a split
     // (arch) at the bottom; drawn over the rope ring like the original.
-    for (int pass = 0; pass < 2; pass++) {
-      float g = pass ? 0 : 1.3f;
-      uint16_t c = pass ? HOOF : GOLD;
+    for (int pass = 0; pass < 3; pass++) {  // dark rim so the gold edge stands off the gold ring behind
+      float g = (2 - pass) * 1.3f;
+      uint16_t c = pass == 0 ? INK : pass == 1 ? GOLD : HOOF;
       s.ellipse(hx, 192, 15 + g, 11 + g, 0, c);
       s.rrect(hx, 199, 34 + 2 * g, 14 + 2 * g, 5 + g, 0, c);
     }
