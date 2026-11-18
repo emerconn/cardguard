@@ -63,6 +63,10 @@ void setup() {
   NimBLEService *svc = server->createService("9a49e65d-c7e4-4d64-a03d-061e26e9b26a");
   svc->createCharacteristic("6eeb6fbb-9458-47d6-9379-e73cab7dfa04", NIMBLE_PROPERTY::WRITE)
       ->setCallbacks(new SelectCallbacks());
+  // Guard names, one per line, so the phone page builds its buttons from the board.
+  std::string names;
+  for (int i = 0; i < GUARD_COUNT; i++) names += std::string(i ? "\n" : "") + GUARD_NAMES[i];
+  svc->createCharacteristic("ab3ba50e-45cb-4145-ae7e-3066f7e872a8", NIMBLE_PROPERTY::READ)->setValue(names);
   svc->start();
   // Name only: name + the 128-bit service UUID overflow the 31-byte advert and it never starts.
   NimBLEDevice::getAdvertising()->setName("cardguard");

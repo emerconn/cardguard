@@ -30,31 +30,30 @@
 // Must match the firmware (src/main.cpp).
 const SERVICE = '9a49e65d-c7e4-4d64-a03d-061e26e9b26a';
 const SELECT = '6eeb6fbb-9458-47d6-9379-e73cab7dfa04';
-// shortcut: names copied from GUARDS in src/guards.cpp, update both; read them from the board if they drift.
-const GUARDS = ['Chip Leader', 'Ducks', 'Jack King Off', 'Donk'];
+const NAMES = 'ab3ba50e-45cb-4145-ae7e-3066f7e872a8';  // guard names, one per line (GUARD_NAMES)
 
 const status = document.getElementById('status');
 const list = document.getElementById('guards');
-let device = null, select = null;
+let device = null, select = null, names = [], buttons = [];
 
 function say(msg, isErr) { status.textContent = msg; status.className = isErr ? 'err' : ''; }
 // Bluefy sometimes rejects with no message (showed as "undefined").
 const why = e => (e && (e.message || e.name)) || String(e);
 
-// (Re)connect to the device already picked: no picker needed.
+// (Re)connect to the device already picked: no picker needed. Rebuilds the buttons from the board's names.
 async function attach() {
-  const server = await device.gatt.connect();
-  select = await (await server.getPrimaryService(SERVICE)).getCharacteristic(SELECT);
+  const svc = await (await device.gatt.connect()).getPrimaryService(SERVICE);
+  select = await svc.getCharacteristic(SELECT);
+  names = new TextDecoder().decode(await (await svc.getCharacteristic(NAMES)).readValue()).split('\n');
+  list.replaceChildren();
+  buttons = names.map((name, i) => {
+    const b = document.createElement('button');
+    b.textContent = `${i}  ${name}`;
+    b.onclick = () => pick(i);
+    list.appendChild(b);
+    return b;
+  });
 }
-
-const buttons = GUARDS.map((name, i) => {
-  const b = document.createElement('button');
-  b.textContent = `${i}  ${name}`;
-  b.disabled = true;
-  b.onclick = () => pick(i);
-  list.appendChild(b);
-  return b;
-});
 
 document.getElementById('connect').onclick = async () => {
   if (!navigator.bluetooth) return say('No Web Bluetooth here. On iPhone open this page in the Bluefy browser.', true);
@@ -63,8 +62,7 @@ document.getElementById('connect').onclick = async () => {
     const d = await navigator.bluetooth.requestDevice({ filters: [{ name: 'cardguard' }], optionalServices: [SERVICE] });
     if (d !== device) d.addEventListener('gattserverdisconnected', () => { select = null; say('Disconnected. Tap a guard to reconnect.'); });
     device = d;
-    await attach();
-    buttons.forEach(b => (b.disabled = false));  // stay enabled after a drop: a tap reconnects
+    await attach();  // buttons stay after a drop: a tap reconnects
     say('Connected. Pick a guard.');
   } catch (e) {
     say(e && e.name === 'NotFoundError' ? 'No cardguard picked. Is its screen on?' : `Connect failed: ${why(e)}`, true);
@@ -76,7 +74,7 @@ async function pick(i) {
     if (!select || !device.gatt.connected) { say('Reconnecting…'); await attach(); }
     await select.writeValue(new Uint8Array([i]));  // raw byte; the board also accepts text digits
     buttons.forEach((b, j) => b.classList.toggle('on', j === i));
-    say(`Showing ${GUARDS[i]}`);
+    say(`Showing ${names[i]}`);
   } catch (e) {
     select = null;  // next tap tries a fresh connection
     say(`Send failed: ${why(e)}. Tap again, or Connect.`, true);

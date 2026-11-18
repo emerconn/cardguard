@@ -363,3 +363,7 @@ void drawNoGuard(Arduino_GFX *gfx, int n) {
 
 const GuardFn GUARDS[] = {chipLeader, ducks, jackKingOff, donk};
 const int GUARD_COUNT = sizeof(GUARDS) / sizeof(GUARDS[0]);
+// Shown on the phone page (sent over BLE), same order as GUARDS.
+const char *const GUARD_NAMES[] = {"Chip Leader", "Ducks", "Jack King Off", "Donk"};
+static_assert(sizeof(GUARD_NAMES) / sizeof(GUARD_NAMES[0]) == sizeof(GUARDS) / sizeof(GUARDS[0]),
+              "every guard in GUARDS needs a name in GUARD_NAMES");

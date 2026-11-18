@@ -12,6 +12,7 @@ pio run                        # compile firmware -> .pio/build/esp32-c3/firmwar
 pio run -t upload              # compile if needed, then flash over USB
 pio device monitor             # serial output at 115200; Ctrl+C to exit
 pio run -t upload -t monitor   # all of the above in one go
+pio run -t compiledb           # refresh compile_commands.json for the editor (clangd) after lib changes
 ```
 
 - Only one program can hold the serial port: close any running monitor before uploading, or the
@@ -36,7 +37,7 @@ python3 tools/drawtime.py   # resets the board, then sends 'n' over serial to st
 
 Pick a guard from a phone over Bluetooth LE: in nRF Connect (iOS/Android) connect to `cardguard`,
 open the service `9a49e65d-…` and write to characteristic `6eeb6fbb-…` the guard number as Text
-(`2`) or as a byte (`02`). Numbers past the last guard show "NO GUARD n" for 3 s and are logged to serial (only the button wraps). Only while the screen is on; light sleep drops Bluetooth. It keeps advertising while connected (up to 3 connections), so a reloaded phone page still finds it; connects, disconnects and picks are logged to serial.
+(`2`) or as a byte (`02`). Numbers past the last guard show "NO GUARD n" for 3 s and are logged to serial (only the button wraps). Only while the screen is on; light sleep drops Bluetooth. The phone page reads the guard names from the board (`GUARD_NAMES`). It keeps advertising while connected (up to 3 connections), so a reloaded phone page still finds it; connects, disconnects and picks are logged to serial.
 
 Text uses fonts generated into `src/fonts.h`. When a design needs a new character, add it to the
 lists in `tools/fonts.sh` and run it.
