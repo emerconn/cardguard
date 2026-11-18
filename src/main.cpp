@@ -71,6 +71,9 @@ void setup() {
   // Name only: name + the 128-bit service UUID overflow the 31-byte advert and it never starts.
   NimBLEDevice::getAdvertising()->setName("cardguard");
   if (!NimBLEDevice::getAdvertising()->start()) Serial.println("BLE advertising failed");
+  // After display + BLE are up, so it shows what designs and features actually leave free.
+  Serial.printf("heap: %u KB free, %u KB largest block, %u KB total\n", ESP.getFreeHeap() / 1024,
+                ESP.getMaxAllocHeap() / 1024, ESP.getHeapSize() / 1024);
 }
 
 void waitRelease() {
