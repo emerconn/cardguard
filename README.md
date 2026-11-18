@@ -69,6 +69,7 @@ Target: **~20 designs**, each a crisp digital (vector-style) design, not a photo
 | 2026-11-17 | Invalid BLE pick: serial log line + 3 s red "NO GUARD n" screen, then back to the current guard; new shared styles `ALERT`, `BIG_NUMBER` | Phone gets no reply, so the screen must show the mistake; the button still wraps since it has no specific input |
 | 2026-11-18 | Phone page `docs/app` hosted on GitHub Pages by our own workflow (`.github/workflows/pages.yml`), not the built-in Jekyll branch build | Plain HTML needs no build; built-in one used deprecated Node 20 actions; ~20 s deploy, only when `docs/` changes |
 | 2026-11-18 | `tools/compiledb.py` pre-build script regenerates `compile_commands.json` when missing or older than `platformio.ini` / the `src/` file list | clangd showed "file not found" after adding NimBLE; now any build fixes it, and unchanged builds pay nothing |
+| 2026-11-18 | **No gain**: trimming BLE roles (`CONFIG_BT_NIMBLE_ROLE_CENTRAL_DISABLED` / `_OBSERVER_DISABLED`) | Arduino-ESP32 ships the NimBLE host precompiled with all roles (its `sdkconfig.h` wins); flash was byte-identical. Only a custom framework build could trim it |
 
 ### Renderer vs SVG (renderer chosen)
 
