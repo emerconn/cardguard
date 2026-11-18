@@ -12,7 +12,7 @@ pio run                        # compile firmware -> .pio/build/esp32-c3/firmwar
 pio run -t upload              # compile if needed, then flash over USB
 pio device monitor             # serial output at 115200; Ctrl+C to exit
 pio run -t upload -t monitor   # all of the above in one go
-pio run -t compiledb           # refresh compile_commands.json for the editor (clangd) after lib changes
+pio run -t compiledb           # refresh compile_commands.json by hand (builds already do it when stale)
 ```
 
 - Only one program can hold the serial port: close any running monitor before uploading, or the
@@ -68,6 +68,7 @@ Target: **~20 designs**, each a crisp digital (vector-style) design, not a photo
 | 2026-11-17 | BLE guard select via NimBLE-Arduino, one write-only characteristic; test with nRF Connect before any app | Lighter than the stock BLE stack (+~250 KB flash total, 657 KB used); same firmware serves a later Bluefy page or iOS app |
 | 2026-11-17 | Invalid BLE pick: serial log line + 3 s red "NO GUARD n" screen, then back to the current guard; new shared styles `ALERT`, `BIG_NUMBER` | Phone gets no reply, so the screen must show the mistake; the button still wraps since it has no specific input |
 | 2026-11-18 | Phone page `docs/app` hosted on GitHub Pages by our own workflow (`.github/workflows/pages.yml`), not the built-in Jekyll branch build | Plain HTML needs no build; built-in one used deprecated Node 20 actions; ~20 s deploy, only when `docs/` changes |
+| 2026-11-18 | `tools/compiledb.py` pre-build script regenerates `compile_commands.json` when missing or older than `platformio.ini` / the `src/` file list | clangd showed "file not found" after adding NimBLE; now any build fixes it, and unchanged builds pay nothing |
 
 ### Renderer vs SVG (renderer chosen)
 
