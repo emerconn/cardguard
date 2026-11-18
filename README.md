@@ -35,16 +35,7 @@ Time every guard on the real board (needs the current firmware flashed, no seria
 python3 tools/drawtime.py   # resets the board, then sends 'n' over serial to step through guards
 ```
 
-### Tests
-
-```sh
-node --test                                   # web app logic (fake browser + board); no board needed, runs on every PR (Tests workflow)
-.venv/bin/python test/hardware/smoke.py       # after flashing: boot, BLE advert, names, picks, brightness, BLE log
-.venv/bin/python test/hardware/reconnect_time.py  # sleep/wake over serial (z), time to first advert and reconnect
-```
-
-The smoke test needs the board on USB, no serial monitor open, and once:
-`python3 -m venv .venv && .venv/bin/pip install bleak pyserial`.
+Tests: `node --test` for the web app; board tests and setup are in [`test/README.md`](test/README.md).
 
 Pick a guard from any Bluetooth LE client: in nRF Connect (iOS/Android) connect to `cardguard`,
 open the service `9a49e65d-…` and write to characteristic `6eeb6fbb-…` the guard number as Text
