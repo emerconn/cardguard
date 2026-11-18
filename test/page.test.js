@@ -31,7 +31,7 @@ function loadPage() {
   // Fake board: connect() answers unless `reachable` is false (asleep, out of range), then it never settles,
   // as on iOS. Its stored brightness reads 60.
   // failFast: connect rejects at once with a bare code, as Bluefy does ("2") for a sleeping board.
-  const board = { reachable: true, failFast: false, writes: [], pickerOpened: 0, current: 2 };
+  const board = { reachable: true, failFast: false, asleep: false, pending: [], writes: [], pickerOpened: 0, current: 2 };
   const device = {
     listeners: {}, addEventListener(t, f) { this.listeners[t] = f; },
     gatt: {
@@ -46,7 +46,11 @@ function loadPage() {
     },
   };
   // The board drops the link by itself (sleep, reset): the page gets the disconnect event.
-  const boardDrops = () => { device.gatt.connected = false; device.listeners.gattserverdisconnected(); };
+  const boardDrops = () => {
+    device.gatt.connected = false;
+    device.listeners.gattserverdisconnected();
+    board.pending.splice(0).forEach((no) => no(new Error('GATT Server is disconnected')));
+  };
   // One object per characteristic, kept across reconnects like Web Bluetooth does. The guard one (6eeb…)
   // reads the board's current guard and notifies listeners when it changes.
   const chars = {};
@@ -59,6 +63,8 @@ function loadPage() {
     },
     async writeValue(v) {
       if (!device.gatt.connected) throw new Error('GATT not connected');
+      // Board just fell asleep, link not dropped yet: the write hangs until the drop fails it.
+      if (board.asleep) return new Promise((_, no) => board.pending.push(no));
       board.writes.push(v[0]);
       if (uuid.startsWith('6eeb')) board.current = v[0];
     },
@@ -140,6 +146,20 @@ test('board drops (sleep, reset): controls freeze, then it reconnects by itself'
   assert.match(p.status.textContent, /reconnected/);
   assert.ok(p.live());
   assert.equal(p.board.pickerOpened, 1);  // no picker for a reconnect
+});
+
+test('a brightness dragged just as the board falls asleep snaps back to the board\'s level', async () => {
+  const p = await connected();  // board brightness 60
+  p.board.asleep = true;  // asleep, but the page has not seen the drop yet
+  p.els.bright.value = '30';
+  const sending = p.els.bright.oninput();  // hangs: nothing confirms it
+  assert.equal(p.els.pct.textContent, '30%');  // live while dragging
+  p.board.reachable = false;
+  p.boardDrops();
+  await sending;
+  assert.ok(p.frozen());
+  assert.equal(p.els.bright.value, 60);
+  assert.equal(p.els.pct.textContent, '60%');
 });
 
 test('frozen controls send nothing', async () => {

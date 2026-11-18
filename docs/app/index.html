@@ -78,6 +78,8 @@ const list = document.getElementById('guards');
 const light = document.getElementById('light');
 const slider = document.getElementById('bright'), pct = document.getElementById('pct');
 let device = null, select = null, bright = null, names = [], buttons = [];
+let boardBright = null;  // last brightness the board confirmed (read, or written OK); the slider returns to it on a drop
+function showBright(v) { slider.value = v; pct.textContent = v + '%'; }
 
 function say(msg, isErr) { status.textContent = msg; status.className = isErr ? 'err' : ''; }
 // Bluefy sometimes rejects with no message (showed as "undefined").
@@ -97,8 +99,8 @@ async function attach() {
   const svc = await (await withTimeout(device.gatt.connect(), 10000, 'connecting')).getPrimaryService(SERVICE);
   select = await svc.getCharacteristic(SELECT);
   bright = await svc.getCharacteristic(BRIGHT);
-  slider.value = (await bright.readValue()).getUint8(0);
-  pct.textContent = slider.value + '%';
+  boardBright = (await bright.readValue()).getUint8(0);
+  showBright(boardBright);
   light.hidden = false;
   try {
     const log = await svc.getCharacteristic(LOG);
@@ -192,6 +194,8 @@ function onDrop() {
   const wasUp = up;
   select = null;
   setConnected(false);
+  wanted = null;  // a drag still waiting to be sent is dropped with the link
+  if (boardBright !== null) showBright(boardBright);  // frozen controls show what the board has, not an unsent drag
   if (leaving) {
     // On purpose: clear the controls and don't reconnect.
     leaving = false;
@@ -270,11 +274,12 @@ slider.oninput = async () => {
       const v = wanted;
       wanted = null;
       await bright.writeValue(new Uint8Array([v]));
+      boardBright = v;
     }
     say(`brightness ${slider.value}%`);
   } catch (e) {
     wanted = null;
-    failed('brightness', e);  // after a reconnect the slider shows the board's real level again
+    failed('brightness', e);  // a drop puts the slider back to the board's level
   } finally {
     sending = false;
   }
