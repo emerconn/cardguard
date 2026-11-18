@@ -10,7 +10,7 @@ node --test
 
 `page.test.js` loads `docs/app/index.html` into a fake browser with a fake Bluetooth board and checks
 connecting, highlights, frozen controls, automatic reconnects and disconnecting. No dependencies. The
-`Tests` workflow runs it on every pull request (`web-app` check).
+`Tests` workflow runs it on every pull request (`web` check).
 
 ## Renderer (no board needed)
 
