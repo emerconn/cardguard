@@ -1,0 +1,11 @@
+[package]
+name = "guards"
+version = "0.1.0"
+edition = "2024"
+description = "Card guard designs and their anti-aliased renderer; no_std, so it also builds on the PC for previews"
+
+[dependencies]
+libm = "0.2"
+
+[profile.dev]
+opt-level = 1 # previews in a blink; overflow checks stay on

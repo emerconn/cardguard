@@ -6,7 +6,7 @@ guard names, draws a valid pick, rejects an invalid one, takes a brightness writ
 lines over BLE. Leaves the board on guard 0 at its saved brightness.
 
 Setup once:  python3 -m venv .venv && .venv/bin/pip install bleak pyserial
-Run:         pio run -t upload && .venv/bin/python test/hardware/smoke.py [PORT]
+Run:         (cd firmware && cargo run --release) && .venv/bin/python test/hardware/smoke.py [PORT]
 """
 import asyncio, re, sys, threading, time
 

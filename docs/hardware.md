@@ -50,7 +50,7 @@ came from `1_2_Factory_samples_without_touch`), Espressif flash-tool manuals, an
 
 | Function | GPIO | Notes | Source |
 |---|---|---|---|
-| Display SCK | 6 | | [EB], [HD], `src/main.cpp` |
+| Display SCK | 6 | | [EB], [HD], `firmware/src/main.rs` |
 | Display MOSI | 7 | no MISO | [EB], [HD] |
 | Display DC | 2 | | [EB], [HD] |
 | Display CS | 10 | | [EB], [HD] |
@@ -61,7 +61,7 @@ came from `1_2_Factory_samples_without_touch`), Espressif flash-tool manuals, an
 | Spare | 8 | pad S1, pulled up; the only free GPIO | [EB] |
 | SH1.0-4P | GND, 3V3, TX (21), RX (20) | JST-SH 1.0 mm serial header | [EB], [CD] |
 
-The display runs at 80 MHz SPI (`src/main.cpp`), measured fine on our panel.
+The display runs at 80 MHz SPI (`firmware/src/main.rs`), measured fine on our panel.
 
 ### Power switch (side)
 
@@ -71,7 +71,7 @@ The display runs at 80 MHz SPI (`src/main.cpp`), measured fine on our panel.
 - On USB power it does nothing (observed on our board): USB 5 V feeds the board directly. It only acts
   as an on/off switch when running from a LiPo on the JST 1.25 connector.
 - **Unverified (from memory of the IP5306 datasheet, not checked):** the IP5306 shuts its output off by
-  itself when the load stays very low for ~30 s. On battery, our long-press sleep (`src/main.cpp`) may
+  itself when the load stays very low for ~30 s. On battery, our long-press sleep (`firmware/src/main.rs`) may
   draw little enough to trigger this, so the board would power off fully instead of sleeping. Test
   with a battery before relying on sleep.
 
