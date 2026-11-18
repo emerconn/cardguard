@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>cardguard</title>
+<style>
+  :root { --bg: #111; --fg: #f4eede; --gold: #e8b84a; --red: #d62828; --card: #1e1e1e; }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 24px 16px; background: var(--bg); color: var(--fg);
+         font: 17px/1.4 -apple-system, system-ui, sans-serif; max-width: 480px; margin-inline: auto; }
+  h1 { color: var(--gold); font-size: 28px; margin: 0 0 4px; }
+  #status { margin: 0 0 20px; opacity: .8; }
+  button { display: block; width: 100%; padding: 16px; margin: 0 0 10px; border-radius: 12px;
+           font: inherit; font-weight: 600; text-align: left; cursor: pointer;
+           background: var(--card); color: var(--fg); border: 2px solid #333; }
+  button:disabled { opacity: .4; cursor: default; }
+  button.on { border-color: var(--gold); color: var(--gold); }
+  #connect { background: var(--gold); color: #111; border: 0; text-align: center; }
+  .err { color: var(--red); }
+</style>
+</head>
+<body>
+<h1>cardguard</h1>
+<p id="status">Not connected</p>
+<button id="connect">Connect</button>
+<div id="guards"></div>
+
+<script>
+// Must match the firmware (src/main.cpp).
+const SERVICE = '9a49e65d-c7e4-4d64-a03d-061e26e9b26a';
+const SELECT = '6eeb6fbb-9458-47d6-9379-e73cab7dfa04';
+// shortcut: names copied from GUARDS in src/guards.cpp, update both; read them from the board if they drift.
+const GUARDS = ['The Chip Leader', 'The Ducks', 'I Love Jack King Off', "I'm a Donk"];
+
+const status = document.getElementById('status');
+const list = document.getElementById('guards');
+let select = null;
+
+function say(msg, isErr) { status.textContent = msg; status.className = isErr ? 'err' : ''; }
+
+const buttons = GUARDS.map((name, i) => {
+  const b = document.createElement('button');
+  b.textContent = `${i}  ${name}`;
+  b.disabled = true;
+  b.onclick = () => pick(i);
+  list.appendChild(b);
+  return b;
+});
+
+function setConnected(on) {
+  buttons.forEach(b => (b.disabled = !on));
+  if (!on) { select = null; buttons.forEach(b => b.classList.remove('on')); }
+}
+
+document.getElementById('connect').onclick = async () => {
+  if (!navigator.bluetooth) return say('No Web Bluetooth here. On iPhone open this page in the Bluefy browser.', true);
+  try {
+    say('Looking for cardguard…');
+    const device = await navigator.bluetooth.requestDevice({ filters: [{ name: 'cardguard' }], optionalServices: [SERVICE] });
+    device.addEventListener('gattserverdisconnected', () => { setConnected(false); say('Disconnected'); });
+    const server = await device.gatt.connect();
+    select = await (await server.getPrimaryService(SERVICE)).getCharacteristic(SELECT);
+    setConnected(true);
+    say('Connected. Pick a guard.');
+  } catch (e) {
+    setConnected(false);
+    say(e.name === 'NotFoundError' ? 'No cardguard picked. Is its screen on?' : `Connect failed: ${e.message}`, true);
+  }
+};
+
+async function pick(i) {
+  try {
+    await select.writeValue(new Uint8Array([i]));  // raw byte; the board also accepts text digits
+    buttons.forEach((b, j) => b.classList.toggle('on', j === i));
+    say(`Showing ${GUARDS[i]}`);
+  } catch (e) {
+    say(`Send failed: ${e.message}`, true);
+  }
+}
+</script>
+</body>
+</html>
