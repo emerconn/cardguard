@@ -21,10 +21,22 @@
   #light label { display: flex; justify-content: space-between; font-weight: 600; margin-bottom: 8px; }
   #light input { width: 100%; accent-color: var(--gold); }
   .err { color: var(--red); }
+  header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+  h1 { margin: 0; }
+  #logToggle { display: inline-block; width: auto; margin: 0; padding: 6px 14px; border-radius: 999px;
+               font-size: 15px; text-align: center; }
+  #logToggle[aria-pressed="true"] { border-color: var(--gold); color: var(--gold); }
+  #log { margin: 14px 0 0; padding: 12px; max-height: 40vh; overflow: auto; border-radius: 12px;
+         background: #000; border: 2px solid #333; font: 12px/1.45 ui-monospace, Menlo, monospace;
+         white-space: pre-wrap; word-break: break-word; }
+  #log:empty::before { content: 'No log lines yet. They appear here as the board sends them.'; opacity: .5; }
 </style>
 </head>
 <body>
-<h1>cardguard</h1>
+<header>
+  <h1>cardguard</h1>
+  <button id="logToggle" aria-pressed="false">Log</button>
+</header>
 <p id="status">Not connected</p>
 <button id="connect">Connect</button>
 <div id="light" hidden>
@@ -32,6 +44,7 @@
   <input id="bright" type="range" min="10" max="100" step="5">
 </div>
 <div id="guards"></div>
+<pre id="log" hidden></pre>
 
 <script>
 // Must match the firmware (src/main.cpp).
@@ -39,6 +52,24 @@ const SERVICE = '9a49e65d-c7e4-4d64-a03d-061e26e9b26a';
 const SELECT = '6eeb6fbb-9458-47d6-9379-e73cab7dfa04';
 const NAMES = 'ab3ba50e-45cb-4145-ae7e-3066f7e872a8';  // guard names, one per line (GUARD_NAMES)
 const BRIGHT = '38c7816a-72f6-40eb-b1ab-b01bb0136afc';  // backlight percent 10-100, one byte
+const LOG = '7c0bd792-ba8a-4791-be95-3c354c4c2fd2';     // board log lines, as notifications
+
+// Log panel: lines are collected even while hidden; the toggle is remembered on this phone.
+const logBox = document.getElementById('log'), logToggle = document.getElementById('logToggle');
+function showLog(on) {
+  logBox.hidden = !on;
+  logToggle.setAttribute('aria-pressed', on);
+  try { localStorage.setItem('showLog', on ? '1' : ''); } catch (e) {}
+  if (on) logBox.scrollTop = logBox.scrollHeight;
+}
+logToggle.onclick = () => showLog(logBox.hidden);
+try { showLog(localStorage.getItem('showLog') === '1'); } catch (e) {}
+function addLog(text) {
+  const atBottom = logBox.scrollHeight - logBox.scrollTop - logBox.clientHeight < 20;
+  logBox.append(`${new Date().toLocaleTimeString([], { hour12: false })}  ${text}\n`);
+  while (logBox.childNodes.length > 300) logBox.firstChild.remove();
+  if (atBottom) logBox.scrollTop = logBox.scrollHeight;  // don't yank the view while reading older lines
+}
 
 const status = document.getElementById('status');
 const list = document.getElementById('guards');
@@ -57,6 +88,13 @@ async function attach() {
   slider.value = (await bright.readValue()).getUint8(0);
   pct.textContent = slider.value + '%';
   document.getElementById('light').hidden = false;
+  try {
+    const log = await svc.getCharacteristic(LOG);
+    log.oncharacteristicvaluechanged = e => addLog(new TextDecoder().decode(e.target.value));  // property, not addEventListener: reconnects don't double it
+    await log.startNotifications();
+  } catch (e) {
+    addLog(`(page) log unavailable: ${why(e)}`);  // logging must never block connecting
+  }
   names = new TextDecoder().decode(await (await svc.getCharacteristic(NAMES)).readValue()).split('\n');
   list.replaceChildren();
   buttons = names.map((name, i) => {
