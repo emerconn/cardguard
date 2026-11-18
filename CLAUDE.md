@@ -3,29 +3,12 @@
 See README.md for the build, tools, hardware budget and decision log. Record new design or
 architecture decisions in the README's Decisions table.
 
-## Git workflow
+## Git (GitHub enforces PRs, the `phone-page` check and squash merges; these it can't)
 
-`main` is tested and validated. A ruleset on `main` blocks direct and force pushes and requires a
-pull request whose `phone-page` check (the `Tests` workflow) passes.
-
-1. Branch from `origin/main`, commit, push the branch, open a PR into `main`.
-2. Wait for the `Tests` workflow. Merge only when it passes; a failing PR is not merged.
-3. Merge with `gh pr merge --squash` (the only method the repo allows). The PR title becomes the
-   commit on `main`, the PR description its body. GitHub deletes the branch after the merge.
-4. Firmware changes: flash and run `test/hardware/smoke.py` locally first (CI has no board), and
-   say so in the PR.
-
-Commit messages and PR titles use [Conventional Commits](https://www.conventionalcommits.org/):
-`type(scope): imperative summary`, e.g. `fix(ble): treat brightness as a raw byte only`.
-
-- Types: `feat`, `fix`, `perf`, `refactor`, `test`, `ci`, `build`, `docs`, `style`, `chore`,
-  `revert`; `!` after the scope marks a breaking change.
-- Scopes: `ble`, `display`, `guards`, `power`, `page` (phone page), `case`, `fonts`, `tools`,
-  `tests`. Leave the scope out when none fits.
-
-GitHub Actions job names are lowercase with dashes (`phone-page`): use the job id, no separate
-`name:`. A required check in the `main` ruleset refers to the job name, so rename it in the ruleset
-before merging a job rename.
+- Commits and PR titles: Conventional Commits, scopes `ble`, `display`, `guards`, `power`, `page`,
+  `case`, `fonts`, `tools`, `tests`.
+- Firmware changes: run `test/hardware/smoke.py` after flashing (CI has no board); say so in the PR.
+- CI job names: lowercase-dash job ids. Rename a required job in the `main` ruleset before merging.
 
 ## When the user gives a new design (reference image)
 
