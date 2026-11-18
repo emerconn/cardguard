@@ -2,6 +2,7 @@
 #include <driver/gpio.h>
 #include <esp_sleep.h>
 #include <NimBLEDevice.h>
+#include <Preferences.h>
 #include "guards.h"
 
 // Pins from the vendor's Factory_samples_without_touch sketch (ESP32-2424S012). RST is not wired.
@@ -17,6 +18,16 @@ Arduino_GFX *gfx = new Arduino_GC9A01(bus, GFX_NOT_DEFINED, 0 /* rotation */, tr
 
 int current = 0;
 volatile int requested = -1;  // set by BLE, drawn in loop(): the BLE callback runs on another task
+
+// Backlight brightness in percent (10-100), set from the phone page and kept in flash (NVS).
+Preferences prefs;
+int brightness = 60;
+volatile int reqBright = -1;     // set by BLE, applied in loop()
+unsigned long brightChangedAt;   // saved 2 s after the slider stops, not on every drag step (flash wear)
+bool brightDirty = false;
+
+// Squared so the slider feels even: LED brightness looks nearly flat across the top half of linear PWM.
+void setBacklight(int pct) { ledcWrite(PIN_BL, pct ? max(1, pct * pct * 255 / 10000) : 0); }
 
 // Keep advertising while connected: a page that lost its handle (Bluefy reload) can still find the
 // board, instead of an empty picker while the old connection lingers. NimBLE allows 3 connections.
@@ -40,6 +51,17 @@ struct SelectCallbacks : NimBLECharacteristicCallbacks {
   }
 };
 
+// Phone writes brightness percent: raw byte (page) or text "40" (nRF Connect). Clamped to 10-100.
+struct BrightCallbacks : NimBLECharacteristicCallbacks {
+  void onWrite(NimBLECharacteristic *c, NimBLEConnInfo &) override {
+    std::string v = c->getValue();
+    if (v.empty()) return;
+    int p = constrain(isdigit((unsigned char)v[0]) ? atoi(v.c_str()) : (uint8_t)v[0], 10, 100);
+    c->setValue((uint8_t)p);  // reads return the applied value as one byte
+    reqBright = p;
+  }
+};
+
 void show(int i) {
   current = (i + GUARD_COUNT) % GUARD_COUNT;
   unsigned long t = millis();
@@ -50,8 +72,11 @@ void show(int i) {
 void setup() {
   Serial.begin(115200);
   Serial.setTxTimeoutMs(0);  // drop output nobody reads; the default 2 s wait froze the button after ~10 prints
-  pinMode(PIN_BL, OUTPUT);
-  digitalWrite(PIN_BL, HIGH);
+  setCpuFrequencyMhz(80);    // power: ~2x draw time, still well under 500 ms; BLE needs >= 80
+  prefs.begin("cardguard");
+  brightness = prefs.getUChar("bright", brightness);
+  ledcAttach(PIN_BL, 20000, 8);  // 20 kHz PWM: above hearing
+  setBacklight(brightness);
   pinMode(PIN_BTN, INPUT_PULLUP);
   if (!gfx->begin(80000000)) Serial.println("gfx->begin() failed");  // 80 MHz SPI: library default is 40
   show(0);
@@ -67,9 +92,15 @@ void setup() {
   std::string names;
   for (int i = 0; i < GUARD_COUNT; i++) names += std::string(i ? "\n" : "") + GUARD_NAMES[i];
   svc->createCharacteristic("ab3ba50e-45cb-4145-ae7e-3066f7e872a8", NIMBLE_PROPERTY::READ)->setValue(names);
+  NimBLECharacteristic *bright = svc->createCharacteristic("38c7816a-72f6-40eb-b1ab-b01bb0136afc",
+                                                            NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::WRITE);
+  bright->setValue((uint8_t)brightness);
+  bright->setCallbacks(new BrightCallbacks());
   svc->start();
   // Name only: name + the 128-bit service UUID overflow the 31-byte advert and it never starts.
   NimBLEDevice::getAdvertising()->setName("cardguard");
+  NimBLEDevice::getAdvertising()->setMinInterval(800);   // 0.5-0.7 s (units of 0.625 ms): power vs connect delay
+  NimBLEDevice::getAdvertising()->setMaxInterval(1120);
   if (!NimBLEDevice::getAdvertising()->start()) Serial.println("BLE advertising failed");
   // After display + BLE are up, so it shows what designs and features actually leave free.
   Serial.printf("heap: %u KB free, %u KB largest block, %u KB total\n", ESP.getFreeHeap() / 1024,
@@ -84,7 +115,7 @@ void waitRelease() {
 // "Off": backlight and panel off, chip in light sleep until the button is pressed again.
 // Light, not deep, sleep because the C3 can only wake from deep sleep on GPIO0-5 and BOOT is GPIO9.
 void sleepUntilPress() {
-  digitalWrite(PIN_BL, LOW);
+  setBacklight(0);
   gfx->displayOff();  // panel sleep keeps its image, so no redraw on wake
   waitRelease();      // otherwise the held button would wake us straight away
   gpio_wakeup_enable((gpio_num_t)PIN_BTN, GPIO_INTR_LOW_LEVEL);
@@ -92,7 +123,7 @@ void sleepUntilPress() {
   esp_light_sleep_start();
   gpio_wakeup_disable((gpio_num_t)PIN_BTN);
   gfx->displayOn();
-  digitalWrite(PIN_BL, HIGH);
+  setBacklight(brightness);
   waitRelease();  // the waking press shouldn't also switch designs
 }
 
@@ -123,4 +154,17 @@ void loop() {
       show(current);
     }
   }
+  if (reqBright >= 0) {
+    brightness = reqBright;
+    reqBright = -1;
+    setBacklight(brightness);
+    brightDirty = true;
+    brightChangedAt = millis();
+  }
+  if (brightDirty && millis() - brightChangedAt > 2000) {
+    prefs.putUChar("bright", brightness);
+    brightDirty = false;
+    Serial.printf("brightness %d%% saved\n", brightness);
+  }
+  delay(10);  // power: let the CPU idle between checks instead of spinning flat out
 }

@@ -37,7 +37,7 @@ python3 tools/drawtime.py   # resets the board, then sends 'n' over serial to st
 
 Pick a guard from a phone over Bluetooth LE: in nRF Connect (iOS/Android) connect to `cardguard`,
 open the service `9a49e65d-…` and write to characteristic `6eeb6fbb-…` the guard number as Text
-(`2`) or as a byte (`02`). Numbers past the last guard show "NO GUARD n" for 3 s and are logged to serial (only the button wraps). Only while the screen is on; light sleep drops Bluetooth. The phone page reads the guard names from the board (`GUARD_NAMES`). It keeps advertising while connected (up to 3 connections), so a reloaded phone page still finds it; connects, disconnects and picks are logged to serial.
+(`2`) or as a byte (`02`). Numbers past the last guard show "NO GUARD n" for 3 s and are logged to serial (only the button wraps). Only while the screen is on; light sleep drops Bluetooth. The phone page reads the guard names from the board (`GUARD_NAMES`). Its brightness slider sets the backlight (10-100 %, kept across restarts). It keeps advertising while connected (up to 3 connections), so a reloaded phone page still finds it; connects, disconnects and picks are logged to serial.
 
 Text uses fonts generated into `src/fonts.h`. When a design needs a new character, add it to the
 lists in `tools/fonts.sh` and run it.
@@ -70,6 +70,7 @@ Target: **~20 designs**, each a crisp digital (vector-style) design, not a photo
 | 2026-11-18 | Phone page `docs/app` hosted on GitHub Pages by our own workflow (`.github/workflows/pages.yml`), not the built-in Jekyll branch build | Plain HTML needs no build; built-in one used deprecated Node 20 actions; ~20 s deploy, only when `docs/` changes |
 | 2026-11-18 | `tools/compiledb.py` pre-build script regenerates `compile_commands.json` when missing or older than `platformio.ini` / the `src/` file list | clangd showed "file not found" after adding NimBLE; now any build fixes it, and unchanged builds pay nothing |
 | 2026-11-18 | **No gain**: trimming BLE roles (`CONFIG_BT_NIMBLE_ROLE_CENTRAL_DISABLED` / `_OBSERVER_DISABLED`) | Arduino-ESP32 ships the NimBLE host precompiled with all roles (its `sdkconfig.h` wins); flash was byte-identical. Only a custom framework build could trim it |
+| 2026-11-18 | Battery power: backlight PWM (brightness 10-100 %, squared curve, saved in NVS, slider on the phone page), CPU 80 MHz, `loop()` idles 10 ms, BLE advert every 0.5-0.7 s | Goal: a few hours on a LiPo. Designs now draw in 211-314 ms (was 112-165), still under 500. Not measured with a meter yet; IP5306 may cut power below ~45 mA load |
 
 ### Renderer vs SVG (renderer chosen)
 

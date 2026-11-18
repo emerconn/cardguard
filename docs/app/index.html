@@ -17,6 +17,9 @@
   button:disabled { opacity: .4; cursor: default; }
   button.on { border-color: var(--gold); color: var(--gold); }
   #connect { background: var(--gold); color: #111; border: 0; text-align: center; }
+  #light { margin: 8px 0 24px; }
+  #light label { display: flex; justify-content: space-between; font-weight: 600; margin-bottom: 8px; }
+  #light input { width: 100%; accent-color: var(--gold); }
   .err { color: var(--red); }
 </style>
 </head>
@@ -24,6 +27,10 @@
 <h1>cardguard</h1>
 <p id="status">Not connected</p>
 <button id="connect">Connect</button>
+<div id="light" hidden>
+  <label for="bright">Brightness <span id="pct"></span></label>
+  <input id="bright" type="range" min="10" max="100" step="5">
+</div>
 <div id="guards"></div>
 
 <script>
@@ -31,10 +38,12 @@
 const SERVICE = '9a49e65d-c7e4-4d64-a03d-061e26e9b26a';
 const SELECT = '6eeb6fbb-9458-47d6-9379-e73cab7dfa04';
 const NAMES = 'ab3ba50e-45cb-4145-ae7e-3066f7e872a8';  // guard names, one per line (GUARD_NAMES)
+const BRIGHT = '38c7816a-72f6-40eb-b1ab-b01bb0136afc';  // backlight percent 10-100, one byte
 
 const status = document.getElementById('status');
 const list = document.getElementById('guards');
-let device = null, select = null, names = [], buttons = [];
+const slider = document.getElementById('bright'), pct = document.getElementById('pct');
+let device = null, select = null, bright = null, names = [], buttons = [];
 
 function say(msg, isErr) { status.textContent = msg; status.className = isErr ? 'err' : ''; }
 // Bluefy sometimes rejects with no message (showed as "undefined").
@@ -44,6 +53,10 @@ const why = e => (e && (e.message || e.name)) || String(e);
 async function attach() {
   const svc = await (await device.gatt.connect()).getPrimaryService(SERVICE);
   select = await svc.getCharacteristic(SELECT);
+  bright = await svc.getCharacteristic(BRIGHT);
+  slider.value = (await bright.readValue()).getUint8(0);
+  pct.textContent = slider.value + '%';
+  document.getElementById('light').hidden = false;
   names = new TextDecoder().decode(await (await svc.getCharacteristic(NAMES)).readValue()).split('\n');
   list.replaceChildren();
   buttons = names.map((name, i) => {
@@ -80,6 +93,29 @@ async function pick(i) {
     say(`Send failed: ${why(e)}. Tap again, or Connect.`, true);
   }
 }
+
+// Dragging fires many events; only one BLE write runs at a time and the newest value wins.
+let wanted = null, sending = false;
+slider.oninput = async () => {
+  pct.textContent = slider.value + '%';
+  wanted = +slider.value;
+  if (sending) return;
+  sending = true;
+  try {
+    while (wanted !== null) {
+      const v = wanted;
+      wanted = null;
+      if (!select || !device.gatt.connected) { say('Reconnecting…'); await attach(); slider.value = v; }
+      await bright.writeValue(new Uint8Array([v]));
+    }
+    say(`Brightness ${slider.value}%`);
+  } catch (e) {
+    select = null;
+    say(`Brightness failed: ${why(e)}. Try again, or Connect.`, true);
+  } finally {
+    sending = false;
+  }
+};
 </script>
 </body>
 </html>
