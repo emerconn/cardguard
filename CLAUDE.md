@@ -3,7 +3,7 @@
 See README.md for the build, tools, hardware budget and decision log. Record new design or
 architecture decisions in the README's Decisions table.
 
-## Git (GitHub enforces PRs, squash merges and the `phone-page` and `pr-title` checks; these it can't)
+## Git (GitHub enforces PRs, squash merges and the `web-app` and `pr-title` checks; these it can't)
 
 - Firmware changes: run `test/hardware/smoke.py` after flashing (CI has no board); say so in the PR.
 - CI job names: lowercase-dash job ids. Rename a required job in the `main` ruleset before merging.

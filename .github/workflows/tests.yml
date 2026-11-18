@@ -13,7 +13,7 @@ permissions:
   contents: read
 
 jobs:
-  phone-page:  # job ids are the check names the main ruleset requires
+  web-app:  # job ids are the check names the main ruleset requires
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
