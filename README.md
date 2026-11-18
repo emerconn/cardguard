@@ -83,6 +83,7 @@ Target: **~20 designs**, each a crisp digital (vector-style) design, not a photo
 | 2026-11-18 | Battery power: backlight PWM (brightness 10-100 %, squared curve, saved in NVS, slider on the phone page), CPU 80 MHz, `loop()` idles 10 ms, BLE advert every 0.5-0.7 s | Goal: a few hours on a LiPo. Designs now draw in 211-314 ms (was 112-165), still under 500. Not measured with a meter yet; IP5306 may cut power below ~45 mA load |
 | 2026-11-18 | Tests in `test/`: `node --test` (page logic, fake browser, runs on every PR in the `Tests` workflow) and `test/hardware/smoke.py` (board over serial + BLE, run after flashing); `tools/` is for utilities | Page bugs reached the phone before; no firmware unit tests (logic is thin glue, the risk is BLE and the screen) |
 | 2026-11-18 | `main` is tested and validated: every change goes through a PR, the `Tests` workflow must pass to merge (ruleset), Pages deploys from `main` after merge | Tests belong before main, not as a gate inside the deploy |
+| 2026-11-18 | Squash merges only, Conventional Commits for commits and PR titles, CI jobs named lowercase-with-dashes (rules in `CLAUDE.md`) | `main` history reads as one conventional commit per PR |
 
 ### Renderer vs SVG (renderer chosen)
 
