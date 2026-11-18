@@ -99,7 +99,7 @@ void loop() {
     } else {
       Serial.printf("BLE: no guard %d (valid 0-%d), keeping guard %d\n", n, GUARD_COUNT - 1, current);
       drawNoGuard(gfx, n);
-      delay(1500);  // shortcut: blocks the button for 1.5 s, fine for a rare error
+      delay(3000);  // shortcut: blocks the button for 3 s, fine for a rare error
       show(current);
     }
   }

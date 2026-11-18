@@ -23,6 +23,7 @@ static const TextStyle HEADLINE = {&PokerFont4x, 0.25f, 0};      // big centre w
 static const TextStyle LABEL = {&PokerFont4x, 0.16f, 0};         // centre captions
 static const TextStyle CARD_INDEX = {&TitleFont4x, 0.13f, 0};    // corner rank on court cards
 static const TextStyle CARD_RANK = {&TitleFont4x, 0.3f, 0};      // big rank on number cards
+static const TextStyle ALERT = {&TitleFont4x, 0.42f, 0};         // short warning words across the centre
 static const TextStyle BIG_NUMBER = {&TitleFont4x, 0.6f, 0};     // lone number filling the centre
 
 static void text(Smooth &s, const TextStyle &t, const char *str, float x, float y, uint16_t c) {
@@ -350,7 +351,7 @@ static int noGuardN;
 static void noGuardScene(Smooth &s) {
   s.fill(RGB565_BLACK);
   s.circle(120, 120, 119.5f, RED, RED, 112);
-  text(s, CARD_RANK, "NO GUARD", 120, 78, GOLD);
+  text(s, ALERT, "NO GUARD", 120, 80, GOLD);
   char num[12];
   snprintf(num, sizeof num, "%d", noGuardN);
   text(s, BIG_NUMBER, num, 120, 140, PAPER);
