@@ -143,25 +143,29 @@ function setConnected(on) {
 // After an unplanned drop (board asleep, reset, out of range), retry while the page is on screen.
 // Bounded so a board left asleep doesn't keep the phone busy; after that, the connect button.
 const RETRY_EVERY_MS = 3000, RETRY_TRIES = 40;  // about 2 minutes
-let retrying = false;
+// Each loop has a number; starting a loop or stopping retries bumps it, which retires the running one,
+// so taps and drops never leave two loops going. Each try also picks up a link iOS reconnected by itself
+// (Bluefy shows "connected" but the page gets no event for that).
+let loop = 0;
+const stopRetries = () => loop++;
 async function reconnectLoop() {
-  if (retrying) return;
-  retrying = true;
-  for (let i = 0; i < RETRY_TRIES && retrying && !up; i++) {
+  const me = ++loop;
+  for (let i = 0; i < RETRY_TRIES && me === loop && !up; i++) {
     if (!document.hidden) {  // iOS pauses Bluefy in the background anyway
       try {
         await attach();
-        say('reconnected');
-        addLog('(page) reconnected');
-        break;
+        if (me === loop) {
+          say('reconnected');
+          addLog('(page) reconnected');
+        }
+        return;
       } catch (e) {
-        cancelPending();
+        if (me === loop) cancelPending();
       }
     }
     await sleep(RETRY_EVERY_MS);
   }
-  if (retrying && !up) say('cardguard not found; tap connect to try again', true);
-  retrying = false;
+  if (me === loop && !up) say('cardguard not found; tap connect to try again', true);
 }
 
 // Runs from the disconnect event, the disconnect button, a failed write and the resync below; safe to run twice.
@@ -172,7 +176,7 @@ function onDrop() {
   if (leaving) {
     // On purpose: clear the controls and don't reconnect.
     leaving = false;
-    retrying = false;
+    stopRetries();
     list.replaceChildren();
     buttons = [];
     light.hidden = true;
@@ -198,7 +202,7 @@ connectBtn.onclick = async () => {
     return;
   }
   if (!navigator.bluetooth) return say('no Web Bluetooth here; on iPhone, open this page in Bluefy', true);
-  retrying = false;  // this tap takes over from the background retries
+  stopRetries();  // this tap takes over from the background retries
   try {
     if (device) {  // the same board again: straight back, no picker
       say('connecting…');
@@ -210,8 +214,11 @@ connectBtn.onclick = async () => {
     await attach();
     say('connected; pick a guard');
   } catch (e) {
+    if (e && e.name === 'NotFoundError') return say('no cardguard picked; is its screen on?', true);
+    addLog(`(page) connect failed: ${why(e)}`);  // Bluefy's bare codes ("2") belong here, not in the status
     cancelPending();
-    say(e && e.name === 'NotFoundError' ? 'no cardguard picked; is its screen on?' : `connect failed: ${why(e)}; is cardguard awake?`, true);
+    say('cardguard not reachable; is it awake? retrying…', true);
+    reconnectLoop();  // keep trying, so waking the board brings it back without another tap
   }
 };
 

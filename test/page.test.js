@@ -30,12 +30,14 @@ function loadPage() {
   };
   // Fake board: connect() answers unless `reachable` is false (asleep, out of range), then it never settles,
   // as on iOS. Its stored brightness reads 60.
-  const board = { reachable: true, writes: [], pickerOpened: 0 };
+  // failFast: connect rejects at once with a bare code, as Bluefy does ("2") for a sleeping board.
+  const board = { reachable: true, failFast: false, writes: [], pickerOpened: 0 };
   const device = {
     listeners: {}, addEventListener(t, f) { this.listeners[t] = f; },
     gatt: {
       connected: false,
       connect() {
+        if (board.failFast) return Promise.reject(new Error('2'));
         if (!board.reachable) return new Promise(() => {});
         this.connected = true;
         return Promise.resolve({ getPrimaryService: async () => ({ getCharacteristic: async (uuid) => characteristic(uuid) }) });
@@ -143,13 +145,32 @@ test('retries give up after a while; connect then goes straight back without the
   assert.ok(p.live());
 });
 
-test('connect to a board that stays asleep times out with a hint', async () => {
+test('a failed connect tap keeps retrying, so waking the board brings it back', async () => {
   const p = await connected();
-  p.board.reachable = false;
+  p.board.failFast = true;  // asleep, and Bluefy rejects at once with "2"
   p.boardDrops();
-  await p.button.onclick();  // stop waiting for the retries, try now
-  assert.match(p.status.textContent, /timed out; is cardguard awake/);
+  await p.button.onclick();
+  assert.match(p.status.textContent, /not reachable; is it awake\? retrying/);
+  assert.doesNotMatch(p.status.textContent, /\b2\b/);  // the raw code goes to the debug log, not the status
   assert.equal(p.button.textContent, 'connect');
+
+  await p.tick(20);
+  p.board.failFast = false;  // woken up; iOS reconnects on its own
+  await p.until(() => p.button.textContent === 'disconnect');
+  assert.match(p.status.textContent, /reconnected/);
+  assert.ok(p.live());
+});
+
+test('only one retry loop runs, however often connect is tapped', async () => {
+  const p = await connected();
+  p.board.failFast = true;
+  p.boardDrops();
+  for (let i = 0; i < 3; i++) await p.button.onclick();
+  let attempts = 0;
+  const connect = p.device.gatt.connect.bind(p.device.gatt);
+  p.device.gatt.connect = () => { attempts++; return connect(); };
+  await p.tick(12);  // ~4 retry periods of 3 ms each
+  assert.ok(attempts <= 6, `${attempts} connect attempts: more than one loop is running`);
 });
 
 test('tapping a stale disconnect never opens the picker', async () => {
