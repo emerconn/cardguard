@@ -318,9 +318,25 @@ static void donkey(Smooth &s) {
 
   for (int side = -1; side <= 1; side += 2) {
     float hx = 120 + 30 * side;
-    s.rrect(hx, 196, 29, 20, 7.5f, 0, BROWN_D);  // hooves with a fringe of hair
-    s.rrect(hx, 196, 26, 17, 6, 0, HOOF);
-    for (int i = -1; i <= 1; i++) s.tri(hx + 7 * i - 4, 189, hx + 7 * i + 4, 189, hx + 7 * i, 183, BROWN_D);
+    // Bell-shaped hooves outlined in gold, with a shaggy dark fringe over the top and a split
+    // (arch) at the bottom; drawn over the rope ring like the original.
+    for (int pass = 0; pass < 2; pass++) {
+      float g = pass ? 0 : 1.3f;
+      uint16_t c = pass ? HOOF : GOLD;
+      s.ellipse(hx, 192, 15 + g, 11 + g, 0, c);
+      s.rrect(hx, 199, 34 + 2 * g, 14 + 2 * g, 5 + g, 0, c);
+    }
+    for (int pass = 0; pass < 2; pass++) {
+      float d = pass ? 0 : 1.3f;  // gold copy shifted down edges the fringe's hem
+      uint16_t c = pass ? INK : GOLD;
+      s.ellipse(hx, 188.5f + d, 14, 6.5f, 0, c);
+      for (int i = 0; i < 6; i++) {
+        float x = hx - 12.5f + 5 * i;
+        s.tri(x - 3, 190 + d, x + 3, 190 + d, x, (i % 2 ? 196 : 198.5f) + d, c);
+      }
+    }
+    s.rrect(hx, 202.6f, 8.2f, 8, 4.1f, 0, GOLD);  // split: a small arch open at the bottom
+    s.rrect(hx, 203.6f, 5.4f, 7.4f, 2.7f, 0, INK);
   }
 }
 
