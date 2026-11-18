@@ -38,16 +38,16 @@ python3 tools/drawtime.py   # resets the board, then sends 'n' over serial to st
 ### Tests
 
 ```sh
-node --test                                   # phone page logic (fake browser + board); no board needed, runs on every PR (Tests workflow)
+node --test                                   # web app logic (fake browser + board); no board needed, runs on every PR (Tests workflow)
 .venv/bin/python test/hardware/smoke.py       # after flashing: boot, BLE advert, names, picks, brightness, BLE log
 ```
 
 The smoke test needs the board on USB, no serial monitor open, and once:
 `python3 -m venv .venv && .venv/bin/pip install bleak pyserial`.
 
-Pick a guard from a phone over Bluetooth LE: in nRF Connect (iOS/Android) connect to `cardguard`,
+Pick a guard from any Bluetooth LE client: in nRF Connect (iOS/Android) connect to `cardguard`,
 open the service `9a49e65d-…` and write to characteristic `6eeb6fbb-…` the guard number as Text
-(`2`) or as a byte (`02`). Numbers past the last guard show "NO GUARD n" for 3 s and are logged to serial (only the button wraps). Only while the screen is on; light sleep drops Bluetooth. The phone page reads the guard names from the board (`GUARD_NAMES`). Its brightness slider sets the backlight (10-100 %, kept across restarts). While connected the Connect button reads **Disconnect**; a deliberate disconnect clears the controls, a dropped connection reconnects on the next tap. Its **debug** toggle (top right) shows the board's log lines live (sent as BLE notifications; lines from before the phone connected only reach USB serial). It keeps advertising while connected (up to 3 connections), so a reloaded phone page still finds it; connects, disconnects and picks are logged to serial.
+(`2`) or as a byte (`02`). Numbers past the last guard show "NO GUARD n" for 3 s and are logged to serial (only the button wraps). Only while the screen is on; light sleep drops Bluetooth. The web app reads the guard names from the board (`GUARD_NAMES`). Its brightness slider sets the backlight (10-100 %, kept across restarts). While connected the Connect button reads **Disconnect**; a deliberate disconnect clears the controls, a dropped connection reconnects on the next tap. Its **debug** toggle (top right) shows the board's log lines live (sent as BLE notifications; lines from before the web app connected only reach USB serial). It keeps advertising while connected (up to 3 connections), so a reloaded web app still finds it; connects, disconnects and picks are logged to serial.
 
 Text uses fonts generated into `src/fonts.h`. When a design needs a new character, add it to the
 lists in `tools/fonts.sh` and run it.
@@ -76,12 +76,12 @@ Target: **~20 designs**, each a crisp digital (vector-style) design, not a photo
 | 2026-11-16 | `Serial.setTxTimeoutMs(0)` | With no serial monitor open, each print blocked ~2 s once the USB buffer filled, freezing the button |
 | 2026-11-16 | Shared `TextStyle`s in `guards.cpp`; serif only at large sizes | Small serif text rendered blurry; one set of fonts and sizes keeps designs consistent |
 | 2026-11-17 | BLE guard select via NimBLE-Arduino, one write-only characteristic; test with nRF Connect before any app | Lighter than the stock BLE stack (+~250 KB flash total, 657 KB used); same firmware serves a later Bluefy page or iOS app |
-| 2026-11-17 | Invalid BLE pick: serial log line + 3 s red "NO GUARD n" screen, then back to the current guard; new shared styles `ALERT`, `BIG_NUMBER` | Phone gets no reply, so the screen must show the mistake; the button still wraps since it has no specific input |
-| 2026-11-18 | Phone page `docs/app` hosted on GitHub Pages by our own workflow (`.github/workflows/pages.yml`), not the built-in Jekyll branch build | Plain HTML needs no build; built-in one used deprecated Node 20 actions; ~20 s deploy, only when `docs/` changes |
+| 2026-11-17 | Invalid BLE pick: serial log line + 3 s red "NO GUARD n" screen, then back to the current guard; new shared styles `ALERT`, `BIG_NUMBER` | The client gets no reply, so the screen must show the mistake; the button still wraps since it has no specific input |
+| 2026-11-18 | Web app `docs/app` hosted on GitHub Pages by our own workflow (`.github/workflows/pages.yml`), not the built-in Jekyll branch build | Plain HTML needs no build; built-in one used deprecated Node 20 actions; ~20 s deploy, only when `docs/` changes |
 | 2026-11-18 | `tools/compiledb.py` pre-build script regenerates `compile_commands.json` when missing or older than `platformio.ini` / the `src/` file list | clangd showed "file not found" after adding NimBLE; now any build fixes it, and unchanged builds pay nothing |
 | 2026-11-18 | **No gain**: trimming BLE roles (`CONFIG_BT_NIMBLE_ROLE_CENTRAL_DISABLED` / `_OBSERVER_DISABLED`) | Arduino-ESP32 ships the NimBLE host precompiled with all roles (its `sdkconfig.h` wins); flash was byte-identical. Only a custom framework build could trim it |
-| 2026-11-18 | Battery power: backlight PWM (brightness 10-100 %, squared curve, saved in NVS, slider on the phone page), CPU 80 MHz, `loop()` idles 10 ms, BLE advert every 0.5-0.7 s | Goal: a few hours on a LiPo. Designs now draw in 211-314 ms (was 112-165), still under 500. Not measured with a meter yet; IP5306 may cut power below ~45 mA load |
-| 2026-11-18 | Tests in `test/`: `node --test` (page logic, fake browser, runs on every PR in the `Tests` workflow) and `test/hardware/smoke.py` (board over serial + BLE, run after flashing); `tools/` is for utilities | Page bugs reached the phone before; no firmware unit tests (logic is thin glue, the risk is BLE and the screen) |
+| 2026-11-18 | Battery power: backlight PWM (brightness 10-100 %, squared curve, saved in NVS, slider in the web app), CPU 80 MHz, `loop()` idles 10 ms, BLE advert every 0.5-0.7 s | Goal: a few hours on a LiPo. Designs now draw in 211-314 ms (was 112-165), still under 500. Not measured with a meter yet; IP5306 may cut power below ~45 mA load |
+| 2026-11-18 | Tests in `test/`: `node --test` (page logic, fake browser, runs on every PR in the `Tests` workflow) and `test/hardware/smoke.py` (board over serial + BLE, run after flashing); `tools/` is for utilities | Web app bugs reached users before; no firmware unit tests (logic is thin glue, the risk is BLE and the screen) |
 | 2026-11-18 | `main` is tested and validated: every change goes through a PR, the `Tests` workflow must pass to merge (ruleset), Pages deploys from `main` after merge | Tests belong before main, not as a gate inside the deploy |
 | 2026-11-18 | Squash merges only, Conventional Commits for commits and PR titles, CI jobs named lowercase-with-dashes (rules in `CLAUDE.md`) | `main` history reads as one conventional commit per PR |
 

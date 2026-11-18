@@ -16,8 +16,8 @@
 Arduino_DataBus *bus = new Arduino_ESP32SPI(PIN_DC, PIN_CS, PIN_SCK, PIN_MOSI, GFX_NOT_DEFINED);
 Arduino_GFX *gfx = new Arduino_GC9A01(bus, GFX_NOT_DEFINED, 0 /* rotation */, true /* IPS */);
 
-// Log lines go to USB serial and, as BLE notifications, to the phone page's log panel.
-// shortcut: lines before a phone subscribes (boot, heap) only reach USB serial; keep a backlog if that matters.
+// Log lines go to USB serial and, as BLE notifications, to the web app's log panel.
+// shortcut: lines before a client subscribes (boot, heap) only reach USB serial; keep a backlog if that matters.
 NimBLECharacteristic *logChar = nullptr;
 void logf(const char *fmt, ...) {
   char buf[160];
@@ -34,7 +34,7 @@ void logf(const char *fmt, ...) {
 int current = 0;
 volatile int requested = -1;  // set by BLE, drawn in loop(): the BLE callback runs on another task
 
-// Backlight brightness in percent (10-100), set from the phone page and kept in flash (NVS).
+// Backlight brightness in percent (10-100), set from the web app and kept in flash (NVS).
 Preferences prefs;
 int brightness = 60;
 volatile int reqBright = -1;     // set by BLE, applied in loop()
@@ -56,7 +56,7 @@ struct ServerCallbacks : NimBLEServerCallbacks {
   }
 };
 
-// Phone writes a guard number: text "2" (nRF Connect "Text") or a raw byte 0x02 both work.
+// A client writes a guard number: text "2" (nRF Connect "Text") or a raw byte 0x02 both work.
 struct SelectCallbacks : NimBLECharacteristicCallbacks {
   void onWrite(NimBLECharacteristic *c, NimBLEConnInfo &) override {
     std::string v = c->getValue();
@@ -66,7 +66,7 @@ struct SelectCallbacks : NimBLECharacteristicCallbacks {
   }
 };
 
-// Phone writes brightness percent as one raw byte, clamped to 10-100. No text form: bytes 48-57 are the
+// A client writes brightness percent as one raw byte, clamped to 10-100. No text form: bytes 48-57 are the
 // digits '0'-'9', so 50 % was read as "2" and dropped to 10 % mid-drag (screen flashed dark).
 struct BrightCallbacks : NimBLECharacteristicCallbacks {
   void onWrite(NimBLECharacteristic *c, NimBLEConnInfo &) override {
@@ -78,7 +78,7 @@ struct BrightCallbacks : NimBLECharacteristicCallbacks {
   }
 };
 
-// Shows on serial whether a phone actually subscribed to the log (and is the first line it receives).
+// Shows on serial whether a client actually subscribed to the log (and is the first line it receives).
 struct LogCallbacks : NimBLECharacteristicCallbacks {
   void onSubscribe(NimBLECharacteristic *, NimBLEConnInfo &info, uint16_t subValue) override {
     logf("BLE: %s %s the log\n", info.getAddress().toString().c_str(), subValue ? "subscribed to" : "unsubscribed from");
@@ -111,7 +111,7 @@ void setup() {
   NimBLEService *svc = server->createService("9a49e65d-c7e4-4d64-a03d-061e26e9b26a");
   svc->createCharacteristic("6eeb6fbb-9458-47d6-9379-e73cab7dfa04", NIMBLE_PROPERTY::WRITE)
       ->setCallbacks(new SelectCallbacks());
-  // Guard names, one per line, so the phone page builds its buttons from the board.
+  // Guard names, one per line, so the web app builds its buttons from the board.
   std::string names;
   for (int i = 0; i < GUARD_COUNT; i++) names += std::string(i ? "\n" : "") + GUARD_NAMES[i];
   svc->createCharacteristic("ab3ba50e-45cb-4145-ae7e-3066f7e872a8", NIMBLE_PROPERTY::READ)->setValue(names);

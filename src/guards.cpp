@@ -346,7 +346,7 @@ static void donkScene(Smooth &s) {
 
 static void donk(Arduino_GFX *gfx) { smoothDraw(gfx, donkScene); }
 
-// Shown briefly when the phone asks for a guard that doesn't exist; not a guard itself.
+// Shown briefly when a client asks for a guard that doesn't exist; not a guard itself.
 static int noGuardN;
 static void noGuardScene(Smooth &s) {
   s.fill(RGB565_BLACK);
@@ -363,7 +363,7 @@ void drawNoGuard(Arduino_GFX *gfx, int n) {
 
 const GuardFn GUARDS[] = {chipLeader, ducks, jackKingOff, donk};
 const int GUARD_COUNT = sizeof(GUARDS) / sizeof(GUARDS[0]);
-// Shown on the phone page (sent over BLE), same order as GUARDS.
+// Shown in the web app (sent over BLE), same order as GUARDS.
 const char *const GUARD_NAMES[] = {"Chip Leader", "Ducks", "Jack King Off", "Donk"};
 static_assert(sizeof(GUARD_NAMES) / sizeof(GUARD_NAMES[0]) == sizeof(GUARDS) / sizeof(GUARDS[0]),
               "every guard in GUARDS needs a name in GUARD_NAMES");
