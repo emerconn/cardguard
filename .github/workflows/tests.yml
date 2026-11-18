@@ -24,9 +24,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+      - run: rustup toolchain install # toolchain + RISC-V target from rust-toolchain.toml
+        working-directory: firmware
+      - uses: Swatinem/rust-cache@v2 # compiled dependencies, keyed on Cargo.lock: only our crates rebuild
+        with:
+          workspaces: |
+            guards
+            firmware
       - run: cargo test
         working-directory: guards
-      - run: rustup toolchain install && cargo build --release # toolchain + RISC-V target from rust-toolchain.toml
+      - run: cargo build --release
         working-directory: firmware
 
   # Squash merges make the PR title the commit on main, so this keeps main's history conventional.
