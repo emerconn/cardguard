@@ -28,7 +28,7 @@ jobs:
           TITLE: ${{ github.event.pull_request.title }}  # via env, never inlined: a title could carry shell code
         run: |
           types='feat|fix|perf|refactor|test|ci|build|docs|style|chore|revert'
-          scopes='ble|display|guards|power|page|case|fonts|tools|tests'
+          scopes='ble|display|guards|power|page|case|fonts|tools|tests|readme|claude|deps'
           if printf '%s' "$TITLE" | grep -Eq "^($types)(\(($scopes)\))?!?: [^ ].*"; then
             echo "ok: $TITLE"
           else
