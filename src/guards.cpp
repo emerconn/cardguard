@@ -281,40 +281,40 @@ static void donkey(Smooth &s) {
   for (int pass = 0; pass < 2; pass++) {  // dark grown pass = outline, then fill
     float g = pass ? 0 : 1.6f;
     uint16_t c = pass ? BROWN : BROWN_D;
-    float neck[] = {112 - g, 125, 128 + g, 125, 131 + g, 152, 109 - g, 152};  // starts behind the muzzle
+    float neck[] = {112 - g, 116, 128 + g, 116, 131 + g, 143, 109 - g, 143};  // starts behind the muzzle
     s.poly(neck, 4, c);
-    s.ellipse(120, 164, 23 + g, 16 + g, 0, c);   // rounded chest
-    s.ellipse(101, 179, 15 + g, 8.5f + g, 132, c);  // legs curving out to the hooves
-    s.ellipse(139, 179, 15 + g, 8.5f + g, 48, c);
-    s.ellipse(101, 66, 8 + g, 20 + g, -18, c);  // ears
-    s.ellipse(139, 66, 8 + g, 20 + g, 18, c);
-    s.ellipse(120, 104, 27 + g, 30 + g, 0, c);  // head
+    s.ellipse(120, 155, 23 + g, 16 + g, 0, c);   // rounded chest
+    s.ellipse(101, 170, 15 + g, 8.5f + g, 132, c);  // legs curving out to the hooves
+    s.ellipse(139, 170, 15 + g, 8.5f + g, 48, c);
+    s.ellipse(101, 57, 8 + g, 20 + g, -18, c);  // ears
+    s.ellipse(139, 57, 8 + g, 20 + g, 18, c);
+    s.ellipse(120, 95, 27 + g, 30 + g, 0, c);  // head
   }
-  s.ellipse(101, 68, 4, 13, -18, TAN);  // inside of the ears
-  s.ellipse(139, 68, 4, 13, 18, TAN);
-  s.tri(109, 81, 117, 79, 106, 67, BROWN_D);  // tuft of mane
-  s.tri(115, 79, 125, 79, 120, 63, BROWN_D);
-  s.tri(123, 79, 131, 81, 134, 67, BROWN_D);
+  s.ellipse(101, 59, 4, 13, -18, TAN);  // inside of the ears
+  s.ellipse(139, 59, 4, 13, 18, TAN);
+  s.tri(109, 72, 117, 70, 106, 58, BROWN_D);  // tuft of mane
+  s.tri(115, 70, 125, 70, 120, 54, BROWN_D);
+  s.tri(123, 70, 131, 72, 134, 58, BROWN_D);
 
   for (int side = -1; side <= 1; side += 2) {
     float ex = 120 + 11 * side;
-    s.ellipse(ex, 98, 9.2f, 11.2f, 0, BROWN_D);  // eyes
-    s.ellipse(ex, 98, 8, 10, 0, PAPER);
-    s.circle(ex - 3 * side, 101, 3.6f, INK);
+    s.ellipse(ex, 89, 9.2f, 11.2f, 0, BROWN_D);  // eyes
+    s.ellipse(ex, 89, 8, 10, 0, PAPER);
+    s.circle(ex - 3 * side, 92, 3.6f, INK);
   }
 
-  s.ellipse(120, 128, 22.5f, 17.5f, 0, BROWN_D);  // muzzle
-  s.ellipse(120, 128, 21, 16, 0, TAN);
+  s.ellipse(120, 119, 22.5f, 17.5f, 0, BROWN_D);  // muzzle
+  s.ellipse(120, 119, 21, 16, 0, TAN);
   // Grin: a dark-rimmed half ellipse of teeth under a lip line, upturned corners, and the muzzle
   // showing below it as the lower lip.
-  s.ellipse(120, 132, 15, 7, 0, INK);
-  s.ellipse(120, 132.6f, 13.4f, 5.6f, 0, PAPER);
-  s.rect(103, 123, 34, 9, TAN);
-  s.rect(105, 131, 30, 1.6f, BROWN_D);
-  s.ellipse(104.5f, 130, 3.4f, 1.1f, 53, BROWN_D);
-  s.ellipse(135.5f, 130, 3.4f, 1.1f, -53, BROWN_D);
-  s.ellipse(111, 122, 3.6f, 2.4f, -20, BROWN_D);  // nostrils
-  s.ellipse(129, 122, 3.6f, 2.4f, 20, BROWN_D);
+  s.ellipse(120, 123, 15, 7, 0, INK);
+  s.ellipse(120, 123.6f, 13.4f, 5.6f, 0, PAPER);
+  s.rect(103, 114, 34, 9, TAN);
+  s.rect(105, 122, 30, 1.6f, BROWN_D);
+  s.ellipse(104.5f, 121, 3.4f, 1.1f, 53, BROWN_D);
+  s.ellipse(135.5f, 121, 3.4f, 1.1f, -53, BROWN_D);
+  s.ellipse(111, 113, 3.6f, 2.4f, -20, BROWN_D);  // nostrils
+  s.ellipse(129, 113, 3.6f, 2.4f, 20, BROWN_D);
 
   for (int side = -1; side <= 1; side += 2) {
     float hx = 120 + 30 * side;
@@ -323,20 +323,20 @@ static void donkey(Smooth &s) {
     for (int pass = 0; pass < 3; pass++) {  // dark rim so the gold edge stands off the gold ring behind
       float g = (2 - pass) * 1.3f;
       uint16_t c = pass == 0 ? INK : pass == 1 ? GOLD : HOOF;
-      s.ellipse(hx, 192, 15 + g, 11 + g, 0, c);
-      s.rrect(hx, 199, 34 + 2 * g, 14 + 2 * g, 5 + g, 0, c);
+      s.ellipse(hx, 183, 15 + g, 11 + g, 0, c);
+      s.rrect(hx, 190, 34 + 2 * g, 14 + 2 * g, 5 + g, 0, c);
     }
     for (int pass = 0; pass < 2; pass++) {
       float d = pass ? 0 : 1.3f;  // gold copy shifted down edges the fringe's hem
       uint16_t c = pass ? INK : GOLD;
-      s.ellipse(hx, 188.5f + d, 14, 6.5f, 0, c);
+      s.ellipse(hx, 179.5f + d, 14, 6.5f, 0, c);
       for (int i = 0; i < 6; i++) {
         float x = hx - 12.5f + 5 * i;
-        s.tri(x - 3, 190 + d, x + 3, 190 + d, x, (i % 2 ? 196 : 198.5f) + d, c);
+        s.tri(x - 3, 181 + d, x + 3, 181 + d, x, (i % 2 ? 187 : 189.5f) + d, c);
       }
     }
-    s.rrect(hx, 202.6f, 8.2f, 8, 4.1f, 0, GOLD);  // split: a small arch open at the bottom
-    s.rrect(hx, 203.6f, 5.4f, 7.4f, 2.7f, 0, INK);
+    s.rrect(hx, 193.6f, 8.2f, 8, 4.1f, 0, GOLD);  // split: a small arch open at the bottom
+    s.rrect(hx, 194.6f, 5.4f, 7.4f, 2.7f, 0, INK);
   }
 }
 
