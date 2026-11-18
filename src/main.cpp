@@ -44,7 +44,8 @@ void setup() {
   show(0);
 
   NimBLEDevice::init("cardguard");
-  NimBLEServer *server = NimBLEDevice::createServer();  // re-advertises on disconnect by default
+  NimBLEServer *server = NimBLEDevice::createServer();
+  server->advertiseOnDisconnect(true);  // NimBLE 2.x default is false: one connection and it went silent
   NimBLEService *svc = server->createService("9a49e65d-c7e4-4d64-a03d-061e26e9b26a");
   svc->createCharacteristic("6eeb6fbb-9458-47d6-9379-e73cab7dfa04", NIMBLE_PROPERTY::WRITE)
       ->setCallbacks(new SelectCallbacks());
