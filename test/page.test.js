@@ -60,7 +60,7 @@ async function connected() {
   const p = loadPage();
   await p.button.onclick();
   await p.tick();
-  assert.equal(p.button.textContent, 'Disconnect');
+  assert.equal(p.button.textContent, 'disconnect');
   return p;
 }
 
@@ -74,11 +74,11 @@ test('silent drop while away: coming back shows Connect, a guard tap reconnects'
   const p = await connected();
   p.device.gatt.connected = false;  // dropped while Bluefy was paused: no disconnect event
   p.document.listeners.visibilitychange();
-  assert.equal(p.button.textContent, 'Connect');
+  assert.equal(p.button.textContent, 'connect');
   assert.match(p.status.textContent, /dropped/);
 
   await p.guards()[2].onclick();
-  assert.equal(p.button.textContent, 'Disconnect');
+  assert.equal(p.button.textContent, 'disconnect');
   assert.equal(p.board.writes.at(-1), 2);
 });
 
@@ -87,9 +87,9 @@ test('tapping a stale Disconnect never opens the picker', async () => {
   p.device.gatt.connected = false;  // dropped, and the page has not noticed yet
   await p.button.onclick();
   assert.equal(p.board.pickerOpened, 1);
-  assert.equal(p.button.textContent, 'Connect');
+  assert.equal(p.button.textContent, 'connect');
   assert.equal(p.guards().length, 0);
-  assert.match(p.status.textContent, /Disconnected/);
+  assert.match(p.status.textContent, /disconnected/);
 });
 
 test('reconnect to an unreachable board times out instead of hanging', async () => {
@@ -98,13 +98,13 @@ test('reconnect to an unreachable board times out instead of hanging', async () 
   p.board.reachable = false;
   await Promise.race([p.guards()[1].onclick(), p.tick(1000).then(() => assert.fail('reconnect hung'))]);
   assert.match(p.status.textContent, /timed out/);
-  assert.equal(p.button.textContent, 'Connect');
+  assert.equal(p.button.textContent, 'connect');
 });
 
 test('Disconnect while connected clears the controls', async () => {
   const p = await connected();
   await p.button.onclick();
   assert.equal(p.device.gatt.connected, false);
-  assert.equal(p.button.textContent, 'Connect');
+  assert.equal(p.button.textContent, 'connect');
   assert.equal(p.guards().length, 0);
 });
