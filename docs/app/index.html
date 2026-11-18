@@ -122,7 +122,23 @@ async function attach() {
     list.appendChild(b);
     return b;
   });
+  // Highlight the guard actually on the board, now and whenever it changes (web app, BOOT button, error redraw).
+  highlight((await select.readValue()).getUint8(0));
+  try {
+    if (!select.cardguardListening) {
+      select.addEventListener('characteristicvaluechanged', e => highlight(e.target.value.getUint8(0)));
+      select.cardguardListening = true;
+    }
+    await select.startNotifications();
+  } catch (e) {
+    addLog(`(page) guard updates unavailable: ${why(e)}`);  // the read above still showed the current one
+  }
   setConnected(true);
+}
+
+// Gold outline on the guard the board shows; none for a number past the end (the board's "NO GUARD" screen).
+function highlight(i) {
+  buttons.forEach((b, j) => b.classList.toggle('on', j === i));
 }
 
 // One button: connect while disconnected, disconnect while connected. While disconnected the guard
@@ -232,7 +248,7 @@ async function pick(i) {
   if (!up) return;
   try {
     await select.writeValue(new Uint8Array([i]));  // raw byte; the board also accepts text digits
-    buttons.forEach((b, j) => b.classList.toggle('on', j === i));
+    highlight(i);  // right away; the board's notification confirms it after drawing
     say(`showing ${names[i]}`);
   } catch (e) {
     failed('send', e);
