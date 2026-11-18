@@ -2,6 +2,8 @@
 // Usage: tools/preview/run.sh   -> writes preview/guard_N.png
 #include <Arduino_GFX.h>
 #include "../../src/guards.h"
+#include "../../src/smooth.h"
+#include <cassert>
 
 struct Canvas : Arduino_GFX {
   uint16_t px[240 * 240] = {};
@@ -21,6 +23,8 @@ static void save(const Canvas &c, const char *name) {
 }
 
 int main() {
+  for (float a = -20; a < 20; a += 0.0007f)  // the renderer's integer sin/cos stay float-accurate
+    assert(fabs(fsin(a) - sin(a)) < 1e-6 && fabs(fcos(a) - cos(a)) < 1e-6);
   for (int g = 0; g < GUARD_COUNT; g++) {
     Canvas c;
     GUARDS[g](&c);
