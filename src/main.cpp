@@ -18,6 +18,18 @@ Arduino_GFX *gfx = new Arduino_GC9A01(bus, GFX_NOT_DEFINED, 0 /* rotation */, tr
 int current = 0;
 volatile int requested = -1;  // set by BLE, drawn in loop(): the BLE callback runs on another task
 
+// Keep advertising while connected: a page that lost its handle (Bluefy reload) can still find the
+// board, instead of an empty picker while the old connection lingers. NimBLE allows 3 connections.
+struct ServerCallbacks : NimBLEServerCallbacks {
+  void onConnect(NimBLEServer *s, NimBLEConnInfo &info) override {
+    Serial.printf("BLE: connected %s (%d open)\n", info.getAddress().toString().c_str(), s->getConnectedCount());
+    NimBLEDevice::startAdvertising();
+  }
+  void onDisconnect(NimBLEServer *s, NimBLEConnInfo &info, int reason) override {
+    Serial.printf("BLE: disconnected %s, reason 0x%x\n", info.getAddress().toString().c_str(), reason);
+  }
+};
+
 // Phone writes a guard number: text "2" (nRF Connect "Text") or a raw byte 0x02 both work.
 struct SelectCallbacks : NimBLECharacteristicCallbacks {
   void onWrite(NimBLECharacteristic *c, NimBLEConnInfo &) override {
@@ -46,6 +58,7 @@ void setup() {
 
   NimBLEDevice::init("cardguard");
   NimBLEServer *server = NimBLEDevice::createServer();
+  server->setCallbacks(new ServerCallbacks());
   server->advertiseOnDisconnect(true);  // NimBLE 2.x default is false: one connection and it went silent
   NimBLEService *svc = server->createService("9a49e65d-c7e4-4d64-a03d-061e26e9b26a");
   svc->createCharacteristic("6eeb6fbb-9458-47d6-9379-e73cab7dfa04", NIMBLE_PROPERTY::WRITE)

@@ -35,9 +35,17 @@ const GUARDS = ['Chip Leader', 'Ducks', 'Jack King Off', 'Donk'];
 
 const status = document.getElementById('status');
 const list = document.getElementById('guards');
-let select = null;
+let device = null, select = null;
 
 function say(msg, isErr) { status.textContent = msg; status.className = isErr ? 'err' : ''; }
+// Bluefy sometimes rejects with no message (showed as "undefined").
+const why = e => (e && (e.message || e.name)) || String(e);
+
+// (Re)connect to the device already picked: no picker needed.
+async function attach() {
+  const server = await device.gatt.connect();
+  select = await (await server.getPrimaryService(SERVICE)).getCharacteristic(SELECT);
+}
 
 const buttons = GUARDS.map((name, i) => {
   const b = document.createElement('button');
@@ -48,34 +56,30 @@ const buttons = GUARDS.map((name, i) => {
   return b;
 });
 
-function setConnected(on) {
-  buttons.forEach(b => (b.disabled = !on));
-  if (!on) { select = null; buttons.forEach(b => b.classList.remove('on')); }
-}
-
 document.getElementById('connect').onclick = async () => {
   if (!navigator.bluetooth) return say('No Web Bluetooth here. On iPhone open this page in the Bluefy browser.', true);
   try {
     say('Looking for cardguard…');
-    const device = await navigator.bluetooth.requestDevice({ filters: [{ name: 'cardguard' }], optionalServices: [SERVICE] });
-    device.addEventListener('gattserverdisconnected', () => { setConnected(false); say('Disconnected'); });
-    const server = await device.gatt.connect();
-    select = await (await server.getPrimaryService(SERVICE)).getCharacteristic(SELECT);
-    setConnected(true);
+    const d = await navigator.bluetooth.requestDevice({ filters: [{ name: 'cardguard' }], optionalServices: [SERVICE] });
+    if (d !== device) d.addEventListener('gattserverdisconnected', () => { select = null; say('Disconnected. Tap a guard to reconnect.'); });
+    device = d;
+    await attach();
+    buttons.forEach(b => (b.disabled = false));  // stay enabled after a drop: a tap reconnects
     say('Connected. Pick a guard.');
   } catch (e) {
-    setConnected(false);
-    say(e.name === 'NotFoundError' ? 'No cardguard picked. Is its screen on?' : `Connect failed: ${e.message}`, true);
+    say(e && e.name === 'NotFoundError' ? 'No cardguard picked. Is its screen on?' : `Connect failed: ${why(e)}`, true);
   }
 };
 
 async function pick(i) {
   try {
+    if (!select || !device.gatt.connected) { say('Reconnecting…'); await attach(); }
     await select.writeValue(new Uint8Array([i]));  // raw byte; the board also accepts text digits
     buttons.forEach((b, j) => b.classList.toggle('on', j === i));
     say(`Showing ${GUARDS[i]}`);
   } catch (e) {
-    say(`Send failed: ${e.message}`, true);
+    select = null;  // next tap tries a fresh connection
+    say(`Send failed: ${why(e)}. Tap again, or Connect.`, true);
   }
 }
 </script>
