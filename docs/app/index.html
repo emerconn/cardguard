@@ -17,6 +17,7 @@
   button:disabled { opacity: .4; cursor: default; }
   button.on { border-color: var(--gold); color: var(--gold); }
   #connect { background: var(--gold); color: #111; border: 0; text-align: center; }
+  #connect.off { background: transparent; color: var(--fg); border: 2px solid #333; }
   #light { margin: 8px 0 24px; }
   #light label { display: flex; justify-content: space-between; font-weight: 600; margin-bottom: 8px; }
   #light input { width: 100%; accent-color: var(--gold); }
@@ -35,7 +36,7 @@
 <body>
 <header>
   <h1>cardguard</h1>
-  <button id="logToggle" aria-pressed="false">Log</button>
+  <button id="logToggle" aria-pressed="false">Logs</button>
 </header>
 <p id="status">Not connected</p>
 <button id="connect">Connect</button>
@@ -101,6 +102,7 @@ async function attach() {
   } catch (e) {
     addLog(`(page) log unavailable: ${why(e)}`);  // logging must never block connecting
   }
+  setConnected(true);
   names = new TextDecoder().decode(await (await svc.getCharacteristic(NAMES)).readValue()).split('\n');
   list.replaceChildren();
   buttons = names.map((name, i) => {
@@ -112,14 +114,44 @@ async function attach() {
   });
 }
 
-document.getElementById('connect').onclick = async () => {
+// One button: Connect while disconnected, Disconnect while connected.
+const connectBtn = document.getElementById('connect');
+let leaving = false;  // true while the user is disconnecting on purpose
+function setConnected(on) {
+  connectBtn.textContent = on ? 'Disconnect' : 'Connect';
+  connectBtn.classList.toggle('off', on);
+}
+
+function onDrop() {
+  select = null;
+  setConnected(false);
+  if (leaving) {
+    // On purpose: clear the controls so a tap can't quietly reconnect.
+    leaving = false;
+    list.replaceChildren();
+    buttons = [];
+    document.getElementById('light').hidden = true;
+    say('Disconnected.');
+    addLog('(page) disconnected');
+  } else {
+    say('Connection dropped. Tap a guard to reconnect.');  // buttons stay: a tap reconnects
+    addLog('(page) connection dropped');
+  }
+}
+
+connectBtn.onclick = async () => {
+  if (device && device.gatt.connected) {
+    leaving = true;
+    device.gatt.disconnect();  // fires gattserverdisconnected -> onDrop
+    return;
+  }
   if (!navigator.bluetooth) return say('No Web Bluetooth here. On iPhone open this page in the Bluefy browser.', true);
   try {
     say('Looking for cardguard…');
     const d = await navigator.bluetooth.requestDevice({ filters: [{ name: 'cardguard' }], optionalServices: [SERVICE] });
-    if (d !== device) d.addEventListener('gattserverdisconnected', () => { select = null; say('Disconnected. Tap a guard to reconnect.'); });
+    if (d !== device) d.addEventListener('gattserverdisconnected', onDrop);
     device = d;
-    await attach();  // buttons stay after a drop: a tap reconnects
+    await attach();
     say('Connected. Pick a guard.');
   } catch (e) {
     say(e && e.name === 'NotFoundError' ? 'No cardguard picked. Is its screen on?' : `Connect failed: ${why(e)}`, true);
