@@ -33,5 +33,6 @@ python3 -m venv .venv && .venv/bin/pip install bleak pyserial
 |---|---|
 | `.venv/bin/python test/hardware/smoke.py` | After flashing: boot, free heap, BLE advert, guard names, valid and invalid picks, current guard (read and notify), brightness, BLE log |
 | `.venv/bin/python test/hardware/reconnect_time.py [TRIALS]` | Sleeps the board over serial (`z`: 5 s, wakes by timer) and times the first advert and the reconnect after waking |
+| `.venv/bin/python test/hardware/ble_latency.py [SECONDS]` | Times back-to-back BLE reads while idle, then while serial `n` keeps the board drawing: the slow reads show whether BLE waits for a draw |
 
 CI has no board, so run `smoke.py` locally for firmware changes and say so in the PR.

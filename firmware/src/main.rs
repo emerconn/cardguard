@@ -14,6 +14,7 @@ use portable_atomic::{AtomicU8, AtomicU32, Ordering};
 
 use bt_hci::controller::ExternalController;
 use embassy_executor::Spawner;
+use esp_rtos::embassy::Executor;
 use embassy_futures::select::{Either, Either3, select, select3};
 use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex as Cs, channel::Channel, signal::Signal};
 use embassy_time::{Duration, Instant, Timer};
@@ -47,6 +48,8 @@ use trouble_host::prelude::*;
 use display::Display;
 
 extern crate alloc;
+use alloc::boxed::Box;
+use core::ffi::c_void;
 
 esp_bootloader_esp_idf::esp_app_desc!();
 
@@ -176,28 +179,13 @@ async fn main(spawner: Spawner) -> ! {
     let mut current: u8 = if woke { resume as u8 } else { 0 };
 
     // Bluetooth LE first: a waking board advertises sooner (the panel still shows its image meanwhile).
-    static SERVER: StaticCell<Server> = StaticCell::new();
-    let server = SERVER.init(
-        Server::new_with_config(GapConfig::Peripheral(PeripheralConfig { name: "cardguard", appearance: &appearance::UNKNOWN })).unwrap(),
-    );
-    let mut names: Vec<u8, 256> = Vec::new();
-    for (i, n) in GUARD_NAMES.iter().enumerate() {
-        if i > 0 {
-            names.push(b'\n').unwrap();
-        }
-        names.extend_from_slice(n.as_bytes()).unwrap();
-    }
-    server.set(&server.svc.names, &names).unwrap();
-    server.set(&server.svc.select, &Vec::from_slice(&[current]).unwrap()).unwrap();
-    server.set(&server.svc.bright, &brightness).unwrap();
-
+    // Its tasks run in their own thread, one priority above this one, so BLE preempts a guard draw
+    // (CPU-bound, up to ~80 ms per strip) instead of waiting for it. Not an interrupt executor: the
+    // radio driver blocks on its own threads, which can't run under an interrupt.
     let connector = BleConnector::new(p.BT, Default::default()).unwrap();
-    static RESOURCES: StaticCell<HostResources<Ctl, DefaultPacketPool, CONNS, CHANNELS>> = StaticCell::new();
-    static STACK: StaticCell<Stk> = StaticCell::new();
-    let stack = STACK.init(trouble_host::new(ExternalController::new(connector), RESOURCES.init(HostResources::new())).build());
-    spawner.spawn(ble_runner(stack.runner()).unwrap());
-    spawner.spawn(advertiser(stack.peripheral(), server, spawner).unwrap());
-    spawner.spawn(notifier(stack, server).unwrap());
+    let args = Box::into_raw(Box::new((connector, current, brightness))).cast();
+    // SAFETY: the thread takes ownership of args (Send) and never ends.
+    unsafe { esp_radio_rtos_driver::task_create("ble", ble_thread, args, 1, None, BLE_STACK) };
 
     let (rx, tx) = UsbSerialJtag::new(p.USB_DEVICE).into_async().split();
     core::mem::drop(tx); // esp-println writes the serial output
@@ -345,8 +333,41 @@ struct GuardService {
     log: Vec<u8, 160>,
 }
 
+const BLE_STACK: usize = 12 * 1024; // from the heap
+
+/// The BLE thread: its own executor, so the scheduler can run it ahead of the main thread.
+extern "C" fn ble_thread(args: *mut c_void) {
+    // SAFETY: args is the Box main leaked for this thread.
+    let (connector, current, brightness) = *unsafe { Box::from_raw(args.cast::<(BleConnector<'static>, u8, u8)>()) };
+    static EXECUTOR: StaticCell<Executor> = StaticCell::new();
+    EXECUTOR.init(Executor::new()).run(|spawner| spawner.spawn(ble(connector, current, brightness, spawner).unwrap()));
+}
+
+/// Sets up the GATT server and BLE stack, starts advertising and notifications, then runs the stack.
 #[embassy_executor::task]
-async fn ble_runner(mut runner: Runner<'static, Ctl, DefaultPacketPool>) {
+async fn ble(connector: BleConnector<'static>, current: u8, brightness: u8, spawner: Spawner) {
+    static SERVER: StaticCell<Server> = StaticCell::new();
+    let server = SERVER.init(
+        Server::new_with_config(GapConfig::Peripheral(PeripheralConfig { name: "cardguard", appearance: &appearance::UNKNOWN })).unwrap(),
+    );
+    let mut names: Vec<u8, 256> = Vec::new();
+    for (i, n) in GUARD_NAMES.iter().enumerate() {
+        if i > 0 {
+            names.push(b'\n').unwrap();
+        }
+        names.extend_from_slice(n.as_bytes()).unwrap();
+    }
+    server.set(&server.svc.names, &names).unwrap();
+    server.set(&server.svc.select, &Vec::from_slice(&[current]).unwrap()).unwrap();
+    server.set(&server.svc.bright, &brightness).unwrap();
+
+    static RESOURCES: StaticCell<HostResources<Ctl, DefaultPacketPool, CONNS, CHANNELS>> = StaticCell::new();
+    static STACK: StaticCell<Stk> = StaticCell::new();
+    let stack = STACK.init(trouble_host::new(ExternalController::new(connector), RESOURCES.init(HostResources::new())).build());
+    spawner.spawn(advertiser(stack.peripheral(), server, spawner).unwrap());
+    spawner.spawn(notifier(stack, server).unwrap());
+
+    let mut runner = stack.runner();
     loop {
         if let Err(e) = runner.run().await {
             log!("ble: runner error {e:?}");
