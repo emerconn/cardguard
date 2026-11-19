@@ -426,7 +426,7 @@ fn bullets(s: &mut Smooth) {
     // Revolvers pointing up, each with three bullets above it.
     for (x, m) in [(26.0f32, 1.0f32), (214.0, -1.0)] {
         revolver(s, x, 140.0, 1.1, m);
-        for (dx, y) in [(12.0, 79.0), (1.5, 88.0), (3.5, 101.0)] {
+        for (dx, y) in [(5.0, 75.0), (-5.5, 88.0), (-2.5, 101.0)] {
             s.rrect(x + m * dx, y, 4.2, 9.0, 2.1, 0.0, GOLD); // upright and staggered like the original
         }
     }
