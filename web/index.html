@@ -72,6 +72,18 @@ function addLog(text) {
   while (logBox.childNodes.length > 300) logBox.firstChild.remove();
   if (atBottom) logBox.scrollTop = logBox.scrollHeight;  // don't yank the view while reading older lines
 }
+// Board lines arrive as "<boot>.<n> text". On (re)subscribing the board replays its recent lines, so skip
+// numbers already shown. A set, not a high-water mark: replayed lines can trail a newer live one.
+let logBoot = null, logSeen = new Set();
+function boardLog(line) {
+  const m = /^([0-9a-f]+)\.(\d+) ([\s\S]*)$/.exec(line);
+  if (!m) return addLog(line);  // older firmware: unnumbered
+  if (m[1] !== logBoot) { logBoot = m[1]; logSeen = new Set(); }  // board restarted: new numbers
+  if (logSeen.has(m[2])) return;
+  logSeen.add(m[2]);
+  if (logSeen.size > 1000) logSeen.delete(logSeen.values().next().value);  // oldest first
+  addLog(m[3]);
+}
 
 const status = document.getElementById('status');
 const list = document.getElementById('guards');
@@ -107,7 +119,7 @@ async function attach() {
     // addEventListener: Bluefy ignored the oncharacteristicvaluechanged property. The flag stops a
     // reconnect that hands back the same object from adding a second listener (doubled lines).
     if (!log.cardguardListening) {
-      log.addEventListener('characteristicvaluechanged', e => addLog(new TextDecoder().decode(e.target.value)));
+      log.addEventListener('characteristicvaluechanged', e => boardLog(new TextDecoder().decode(e.target.value)));
       log.cardguardListening = true;
     }
     await log.startNotifications();
