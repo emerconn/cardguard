@@ -1,6 +1,7 @@
 # Tags main with the next SemVer version (vMAJOR.MINOR.PATCH) and publishes a GitHub Release, from the
 # Conventional Commits since the last tag (pr-title keeps main's squash commits conventional):
-# breaking (`type!:` or a `BREAKING CHANGE:` footer) -> major, feat -> minor, fix/perf -> patch, others none.
+# breaking (`type!:` or a `BREAKING CHANGE:` footer) -> major, feat -> minor, anything else -> patch.
+# Every merge gets a tag, so the web app and firmware always show a plain vX.Y.Z, never vX.Y.Z-N-gSHA.
 name: Release
 
 on:
@@ -32,8 +33,8 @@ jobs:
             IFS=. read -r major minor patch <<< "${last#v}"
             if grep -Eq '^[a-z]+(\([^)]*\))?!: |^BREAKING[ -]CHANGE: ' <<< "$log"; then next=v$((major+1)).0.0
             elif grep -Eq '^feat(\([^)]*\))?: ' <<< "$log"; then next=v$major.$((minor+1)).0
-            elif grep -Eq '^(fix|perf)(\([^)]*\))?: ' <<< "$log"; then next=v$major.$minor.$((patch+1))
-            else echo "no release-worthy commits since $last"; exit 0
+            elif [ -n "$log" ]; then next=v$major.$minor.$((patch+1))
+            else echo "no commits since $last"; exit 0  # e.g. a manual rerun
             fi
           fi
           echo "releasing $next"
