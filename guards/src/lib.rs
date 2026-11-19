@@ -510,11 +510,11 @@ fn single_moms(s: &mut Smooth) {
     let h = p(201.0, 108.0);
     s.circle(h.0, h.1, 7.0, GOLD);
     l(s, (197.0, 126.0), (166.0, 100.0), 4.5, 3.0); // raised arm, hand on the pole
-    l(s, (194.0, 132.0), (170.0, 150.0), 4.2, 3.0); // lower arm
+    l(s, (196.0, 127.0), (169.0, 127.0), 4.2, 3.0); // lower arm
     l(s, (199.0, 124.0), (194.0, 160.0), 11.0, 7.5); // torso
-    let (b, w) = (p(184.0, 140.0), p(196.0, 172.0));
+    let (b, w) = (p(190.0, 142.0), p(203.0, 171.0));
     s.circle(b.0, b.1, 4.5, GOLD); // chest
-    s.ellipse(w.0, w.1, 9.5, 8.0, 20.0, GOLD); // hips
+    s.ellipse(w.0, w.1, 8.0, 7.5, 20.0, GOLD); // bum, set back so the belly stays flat
     l(s, (190.0, 175.0), (163.0, 188.0), 8.0, 5.0); // front thigh, hooked round the pole
     l(s, (163.0, 188.0), (168.0, 238.0), 5.0, 3.0);
     l(s, (168.0, 238.0), (160.0, 251.0), 3.0, 2.2); // heel
