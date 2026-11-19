@@ -333,9 +333,11 @@ fn pip_card(s: &mut Smooth, cx: f32, cy: f32, deg: f32, rank: u8, corner: f32, s
     let p = Place::new(cx, cy, 1.0, deg);
     s.rrect(cx, cy, 58.5, 80.5, 5.0, deg, CARD_EDGE);
     s.rrect(cx, cy, 56.0, 78.0, 4.0, deg, PAPER);
-    let x = corner * 18.0; // 4 px padding from the card edge to the 12 px wide rank, suit centred under it
-    s.glyph(CARD_RANK.font, CARD_RANK.scale, rank, p.x(x, -27.0), p.y(x, -27.0), deg, col);
-    suit(s, p.x(x, -8.0), p.y(x, -8.0), col, 0.95, deg);
+    // 6 px from the card's top and side edges to the ~11 x 15 px rank, then a 5 px gap to the suit
+    // centred under it.
+    let x = corner * 16.5;
+    s.glyph(CARD_RANK.font, CARD_RANK.scale, rank, p.x(x, -25.5), p.y(x, -25.5), deg, col);
+    suit(s, p.x(x, -5.0), p.y(x, -5.0), col, 0.95, deg);
 }
 
 const BROWN: u16 = rgb565(178, 98, 46);
