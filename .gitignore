@@ -3,3 +3,4 @@
 .venv/
 .claude/worktrees/
 target/
+__pycache__/
