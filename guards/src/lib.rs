@@ -462,7 +462,7 @@ fn bullets(s: &mut Smooth) {
     s.circle_grad(120.0, 120.0, 84.0, GOLD_L, GOLD_D, 79.0); // hole: the black centre covers it
     s.circle(120.0, 120.0, 80.0, BLACK); // smooth inner edge
     ring_text(s, &BAND, "BULLETS", 98.0, false, GOLD, 0.0);
-    ring_text(s, &BAND, "PAIR OF ACES", 98.0, true, GOLD, 0.0);
+    ring_text(s, &BAND, "PAIR OF ACES", 98.0, true, GOLD, -1.0); // a touch tighter, clear of the spokes
     // Revolvers pointing up, each with three bullets above it.
     for (x, m) in [(26.0f32, 1.0f32), (214.0, -1.0)] {
         revolver(s, x, 140.0, 1.1, m);
