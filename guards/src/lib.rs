@@ -10,9 +10,9 @@ use smooth::{fcos, fsin, rad, rgb565, Font, Smooth};
 
 pub type Scene = fn(&mut Smooth<'_>);
 
-pub static GUARDS: [Scene; 6] = [chip_leader, ducks, jack_king_off, donk, bullets, gone_fishing];
+pub static GUARDS: [Scene; 7] = [chip_leader, ducks, jack_king_off, donk, bullets, gone_fishing, single_moms];
 /// Shown in the web app (sent over BLE), same order as GUARDS.
-pub static GUARD_NAMES: [&str; GUARDS.len()] = ["Chip Leader", "Ducks", "Jack King Off", "Donk", "Bullets", "Gone Fishing"];
+pub static GUARD_NAMES: [&str; GUARDS.len()] = ["Chip Leader", "Ducks", "Jack King Off", "Donk", "Bullets", "Gone Fishing", "Single Moms"];
 
 const BLACK: u16 = 0;
 const GOLD_L: u16 = rgb565(251, 224, 138);
@@ -108,7 +108,7 @@ fn chip_leader(s: &mut Smooth) {
 
     s.clip(81.0); // bands stay inside the white face; gold edges run out to the ring
     s.rect(0.0, 76.0, 240.0, 36.0, GOLD); // top line level with the shield top
-    s.rect(0.0, 77.5, 240.0, 32.5, PAPER);
+    s.rect(0.0, 77.5, 240.0, 32.5, RED);
     s.rect(0.0, 147.0, 240.0, 24.0, GOLD);
     s.rect(0.0, 149.0, 240.0, 20.0, INK);
     s.clip(0.0);
@@ -469,6 +469,58 @@ fn gone_fishing(s: &mut Smooth) {
     hook(s, 130.0, 69.0, 1.35, -1.0, -50.0);
     court_card(s, 96.0, 131.0, -10.0, b'J', heart, RED);
     court_card(s, 144.0, 129.0, 8.0, b'J', diamond, RED);
+}
+
+/// A tapered stroke from (ax, ay), w0 wide, to (bx, by), w1 wide, with rounded ends.
+#[allow(clippy::too_many_arguments)]
+fn limb(s: &mut Smooth, ax: f32, ay: f32, bx: f32, by: f32, w0: f32, w1: f32, c: u16) {
+    let (dx, dy) = (bx - ax, by - ay);
+    let l = libm::hypotf(dx, dy).max(0.01);
+    let (nx, ny) = (-dy / l * 0.5, dx / l * 0.5);
+    s.poly(&[ax + nx * w0, ay + ny * w0, bx + nx * w1, by + ny * w1, bx - nx * w1, by - ny * w1, ax - nx * w0, ay - ny * w0], c);
+    s.circle(ax, ay, w0 * 0.5, c);
+    s.circle(bx, by, w1 * 0.5, c);
+}
+
+fn single_moms(s: &mut Smooth) {
+    banner_frame(s, CREAM, &BAND, "I SUPPORT", &BAND, "SINGLE MOMS");
+    // Points measured on the reference photo (assets/single_moms.png), mapped onto the black centre
+    // and turned about the pole's middle so the pole, which leans 23 across 154 down there, is upright.
+    let (co, sn) = (154.0 / 155.71, 23.0 / 155.71);
+    let p = |x: f32, y: f32| {
+        let (dx, dy) = (x - 171.5, y - 171.0);
+        (120.0 + (dx * co - dy * sn - 13.5) * 0.64, 120.0 + (dx * sn + dy * co - 8.0) * 0.64)
+    };
+    let l = |s: &mut Smooth, a: (f32, f32), b: (f32, f32), w0: f32, w1: f32| {
+        let (a, b) = (p(a.0, a.1), p(b.0, b.1));
+        limb(s, a.0, a.1, b.0, b.1, w0, w1, GOLD);
+    };
+
+    // Stage and pole: gold edges with a black line down the pole's middle.
+    let f = p(183.0, 248.0);
+    limb(s, f.0 - 38.0, f.1 + 2.5, f.0 + 57.0, f.1 + 2.5, 1.8, 1.8, GOLD); // level stage
+    l(s, (160.0, 94.0), (183.0, 248.0), 4.6, 4.6);
+    let (a, b) = (p(160.0, 97.0), p(183.0, 245.0));
+    limb(s, a.0, a.1, b.0, b.1, 1.4, 1.4, INK);
+
+    // Dancer facing the pole: ponytail, head, arms, body, legs.
+    l(s, (209.0, 100.0), (228.0, 122.0), 6.0, 8.5);
+    l(s, (228.0, 122.0), (234.0, 145.0), 8.5, 6.0);
+    l(s, (234.0, 145.0), (230.0, 168.0), 6.0, 1.5);
+    let h = p(201.0, 108.0);
+    s.circle(h.0, h.1, 7.0, GOLD);
+    l(s, (197.0, 126.0), (166.0, 100.0), 4.5, 3.0); // raised arm, hand on the pole
+    l(s, (196.0, 127.0), (169.0, 127.0), 4.2, 3.0); // lower arm
+    l(s, (199.0, 124.0), (194.0, 160.0), 11.0, 7.5); // torso
+    let (b, w) = (p(190.0, 142.0), p(203.0, 171.0));
+    s.circle(b.0, b.1, 4.5, GOLD); // chest
+    s.ellipse(w.0, w.1, 8.0, 7.5, 20.0, GOLD); // bum, set back so the belly stays flat
+    l(s, (190.0, 175.0), (163.0, 188.0), 8.0, 5.0); // front thigh, hooked round the pole
+    l(s, (163.0, 188.0), (168.0, 238.0), 5.0, 3.0);
+    l(s, (168.0, 238.0), (160.0, 251.0), 3.0, 2.2); // heel
+    l(s, (201.0, 178.0), (186.0, 210.0), 8.0, 5.0); // back leg
+    l(s, (186.0, 210.0), (177.0, 241.0), 5.0, 3.0);
+    l(s, (177.0, 241.0), (169.0, 252.0), 3.0, 2.2);
 }
 
 /// Shown briefly when a client asks for a guard that doesn't exist; not a guard itself.
