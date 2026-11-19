@@ -10,9 +10,9 @@ use smooth::{fcos, fsin, rad, rgb565, Font, Smooth};
 
 pub type Scene = fn(&mut Smooth<'_>);
 
-pub static GUARDS: [Scene; 7] = [chip_leader, ducks, jack_king_off, donk, bullets, gone_fishing, single_moms];
+pub static GUARDS: [Scene; 8] = [chip_leader, ducks, jack_king_off, donk, bullets, gone_fishing, single_moms, german_virgin];
 /// Shown in the web app (sent over BLE), same order as GUARDS.
-pub static GUARD_NAMES: [&str; GUARDS.len()] = ["Chip Leader", "Ducks", "Jack King Off", "Donk", "Bullets", "Gone Fishing", "Single Moms"];
+pub static GUARD_NAMES: [&str; GUARDS.len()] = ["Chip Leader", "Ducks", "Jack King Off", "Donk", "Bullets", "Gone Fishing", "Single Moms", "German Virgin"];
 
 const BLACK: u16 = 0;
 const GOLD_L: u16 = rgb565(251, 224, 138);
@@ -523,6 +523,54 @@ fn single_moms(s: &mut Smooth) {
     l(s, (177.0, 241.0), (169.0, 252.0), 3.0, 2.2);
 }
 
+/// Gold-relief woman facing left, head tilted towards the cards in her raised left hand: long hair
+/// down her back, bare shoulders running off the bottom of the face. Dark grown pass = outline.
+fn virgin(s: &mut Smooth) {
+    for pass in 0..2 {
+        let g = if pass == 1 { 0.0 } else { 2.0 };
+        let (c, h) = if pass == 1 { (GOLD_L, GOLD) } else { (GOLD_D, GOLD_D) };
+        s.ellipse(174.0, 110.0, 21.0 + g, 46.0 + g, -12.0, h); // hair falling behind the shoulders
+        s.ellipse(162.0, 184.0, 40.0 + g, 26.0 + g, -8.0, c); // shoulders and chest
+        s.poly(&[151.0 - g, 126.0, 166.0 + g, 126.0, 169.0 + g, 162.0, 148.0 - g, 162.0], c); // neck
+        s.ellipse(158.0, 102.0, 17.0 + g, 22.0 + g, 14.0, c); // face
+        s.ellipse(132.0, 166.0, 26.0 + g, 7.0 + g, 48.0, c); // forearm up to the cards
+    }
+    s.ellipse(165.0, 86.0, 19.0, 13.0, 20.0, GOLD); // fringe swept over the forehead
+    s.ellipse(175.0, 96.0, 8.0, 22.0, -10.0, GOLD); // hair over the far cheek
+    for (x0, y0, x1, y1) in [(181.0, 78.0, 191.0, 150.0), (173.0, 118.0, 182.0, 156.0), (187.0, 94.0, 194.0, 128.0)] {
+        s.poly(&[x0, y0, x0 + 1.4, y0, x1 + 1.4, y1, x1, y1], GOLD_D); // strands
+    }
+    s.ellipse(149.0, 99.0, 4.0, 1.6, 20.0, GOLD_D); // lowered eye looking at the cards
+    s.ellipse(142.0, 107.0, 1.6, 3.0, 20.0, GOLD_D); // nose
+    s.ellipse(144.5, 115.0, 3.2, 1.4, 20.0, GOLD_D); // lips
+    s.ellipse(150.0, 175.0, 9.0, 1.3, 30.0, GOLD_D); // collarbone
+}
+
+fn german_virgin(s: &mut Smooth) {
+    s.fill(BLACK);
+    s.circle_grad(120.0, 120.0, 119.5, GOLD_L, GOLD_D, 112.0);
+    s.circle_grad(120.0, 120.0, 112.0, INK, INK, 84.0);
+    s.circle_grad(120.0, 120.0, 84.0, GOLD_L, GOLD_D, 80.0); // hole: the gold face covers it
+    s.circle(120.0, 120.0, 80.0, GOLD_D);
+    s.circle_grad(120.0, 120.0, 78.5, GOLD, GOLD_D, 0.0); // darker than the figure so the relief reads
+
+    ring_text(s, &BAND, "GERMAN VIRGIN", 98.0, false, GOLD, 0.0);
+    ring_text(s, &BAND, "NINE-NINE", 98.0, true, GOLD, 0.0);
+    for side in [-28.0f32, -10.0, 8.0, 26.0, 44.0] {
+        for left in [false, true] {
+            let a = rad(if left { 180.0 - side } else { side });
+            star(s, 120.0 + 98.0 * fcos(a), 120.0 + 98.0 * fsin(a), 6.0, GOLD);
+        }
+    }
+
+    s.clip(78.5); // the figure runs off the face like the relief
+    virgin(s);
+    pip_card(s, 84.0, 118.0, -14.0, b'9', -1.0, spade, INK);
+    pip_card(s, 106.0, 110.0, 6.0, b'9', -1.0, heart, RED);
+    s.ellipse(115.0, 147.0, 8.0, 6.0, -40.0, GOLD_D); // hand gripping the cards
+    s.ellipse(115.0, 147.0, 6.5, 4.5, -40.0, GOLD_L);
+    s.clip(0.0);
+}
 /// Shown briefly when a client asks for a guard that doesn't exist; not a guard itself.
 pub fn no_guard(s: &mut Smooth, n: u32) {
     s.fill(BLACK);
