@@ -5,12 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>cardguard</title>
 <style>
-  :root { --bg: #111; --fg: #f4eede; --gold: #e8b84a; --red: #d62828; --card: #1e1e1e; }
+  :root { --bg: #111; --fg: #f4eede; --gold: #e8b84a; --card: #1e1e1e; }
   * { box-sizing: border-box; }
   body { margin: 0; padding: 24px 16px; background: var(--bg); color: var(--fg);
          font: 17px/1.4 -apple-system, system-ui, sans-serif; max-width: 480px; margin-inline: auto; }
   h1 { color: var(--gold); font-size: 28px; margin: 0 0 4px; }
-  #status { margin: 0 0 20px; opacity: .8; }
   button { display: block; width: 100%; padding: 16px; margin: 0 0 10px; border-radius: 12px;
            font: inherit; font-weight: 600; text-align: left; cursor: pointer;
            background: var(--card); color: var(--fg); border: 2px solid #333; }
@@ -22,8 +21,7 @@
   #light.off { opacity: .4; }
   #light label { display: flex; justify-content: space-between; font-weight: 600; margin-bottom: 8px; }
   #light input { width: 100%; accent-color: var(--gold); }
-  .err { color: var(--red); }
-  header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+  header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
   h1 { margin: 0; }
   #logToggle { display: inline-block; width: auto; margin: 0; padding: 6px 14px; border-radius: 999px;
                font-size: 15px; text-align: center; }
@@ -39,7 +37,6 @@
   <h1>cardguard</h1>
   <button id="logToggle" aria-pressed="false">debug</button>
 </header>
-<p id="status">not connected</p>
 <button id="connect">connect</button>
 <div id="light" hidden>
   <label for="bright">brightness <span id="pct"></span></label>
@@ -89,7 +86,6 @@ function boardLog(line) {
   addLog(m[3]);
 }
 
-const status = document.getElementById('status');
 const list = document.getElementById('guards');
 const light = document.getElementById('light');
 const slider = document.getElementById('bright'), pct = document.getElementById('pct');
@@ -98,7 +94,6 @@ let boardVersion = '';  // read on each connect
 let boardBright = null;  // last brightness the board confirmed (read, or written OK); the slider returns to it on a drop
 function showBright(v) { slider.value = v; pct.textContent = v + '%'; }
 
-function say(msg, isErr) { status.textContent = msg; status.className = isErr ? 'err' : ''; }
 // Bluefy sometimes rejects with no message (showed as "undefined").
 const why = e => (e && (e.message || e.name)) || String(e);
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -165,18 +160,25 @@ function highlight(i) {
   buttons.forEach((b, j) => b.classList.toggle('on', j === i));
 }
 
-// One button: connect while disconnected, disconnect while connected. While disconnected the guard
-// buttons and slider are frozen, so nothing looks applied that never reached the board. `up` is what
+// One button: connect while disconnected, connecting… while trying (a tap or the retries), disconnect
+// while connected. While disconnected the guard buttons and slider are frozen, so nothing looks applied that never reached the board. `up` is what
 // the page shows; it can go stale when iOS pauses Bluefy and the disconnect event never arrives.
 const connectBtn = document.getElementById('connect');
 let leaving = false;  // true while the user is disconnecting on purpose
-let up = false;
-// In debug mode "disconnect" also shows the board's firmware version.
+let up = false, connecting = false;
+// In debug mode "disconnect" also shows the board's firmware version. Status details go to the debug log.
 function connectLabel() {
-  connectBtn.textContent = !up ? 'connect' : logBox.hidden ? 'disconnect' : `disconnect · ${boardVersion}`;
+  connectBtn.textContent = !navigator.bluetooth ? 'open this page in Bluefy'
+    : up ? (logBox.hidden ? 'disconnect' : `disconnect · ${boardVersion}`)
+    : connecting ? 'connecting…' : 'connect';
+}
+function setConnecting(on) {
+  connecting = on;
+  connectLabel();
 }
 function setConnected(on) {
   up = on;
+  if (on) connecting = false;  // not on a drop: retries cancel a pending connect, which fires a drop
   connectLabel();
   connectBtn.classList.toggle('off', on);
   buttons.forEach(b => (b.disabled = !on));
@@ -197,14 +199,12 @@ let loop = 0;
 const stopRetries = () => loop++;
 async function reconnectLoop() {
   const me = ++loop;
+  setConnecting(true);
   for (let i = 0; i < RETRY_TRIES && me === loop && !up; i++) {
     if (!document.hidden) {  // iOS pauses Bluefy in the background anyway
       try {
         await attach();
-        if (me === loop) {
-          say('reconnected');
-          addLog('web: reconnected');
-        }
+        if (me === loop) addLog('web: reconnected');
         return;
       } catch (e) {
         if (me === loop) cancelPending();
@@ -212,7 +212,10 @@ async function reconnectLoop() {
     }
     await sleep(RETRY_EVERY_MS);
   }
-  if (me === loop && !up) say('cardguard not found; tap connect to try again', true);
+  if (me === loop && !up) {
+    addLog('web: cardguard not found; gave up retrying');
+    setConnecting(false);
+  }
 }
 
 // Runs from the disconnect event, the disconnect button, a failed write and the resync below; safe to run twice.
@@ -226,14 +229,13 @@ function onDrop() {
     // On purpose: clear the controls and don't reconnect.
     leaving = false;
     stopRetries();
+    setConnecting(false);
     list.replaceChildren();
     buttons = [];
     light.hidden = true;
-    say('disconnected');
     addLog('web: disconnected');
   } else if (wasUp) {
-    say('connection lost; reconnecting…');
-    addLog('web: connection lost');
+    addLog('web: connection lost; reconnecting');
     reconnectLoop();
   }
 }
@@ -250,23 +252,23 @@ connectBtn.onclick = async () => {
     onDrop();
     return;
   }
-  if (!navigator.bluetooth) return say('no Web Bluetooth here; on iPhone, open this page in Bluefy', true);
+  if (!navigator.bluetooth) return;  // the button already says to open the page in Bluefy
   stopRetries();  // this tap takes over from the background retries
+  setConnecting(true);
   try {
-    if (device) {  // the same board again: straight back, no picker
-      say('connecting…');
-    } else {
-      say('looking for cardguard…');
+    if (!device) {  // the same board again goes straight back, no picker
       device = await navigator.bluetooth.requestDevice({ filters: [{ name: 'cardguard' }], optionalServices: [SERVICE] });
       device.addEventListener('gattserverdisconnected', onDrop);
     }
     await attach();
-    say('connected; pick a guard');
+    addLog('web: connected');
   } catch (e) {
-    if (e && e.name === 'NotFoundError') return say('no cardguard picked; is its screen on?', true);
-    addLog(`web: connect failed: ${why(e)}`);  // Bluefy's bare codes ("2") belong here, not in the status
+    if (e && e.name === 'NotFoundError') {
+      addLog('web: no cardguard picked');
+      return setConnecting(false);
+    }
+    addLog(`web: connect failed: ${why(e)}; retrying`);
     cancelPending();
-    say('cardguard not reachable; is it awake? retrying…', true);
     reconnectLoop();  // keep trying, so waking the board brings it back without another tap
   }
 };
@@ -274,7 +276,7 @@ connectBtn.onclick = async () => {
 // A write that fails because the link is gone counts as a drop: freeze and reconnect.
 function failed(what, e) {
   if (device && !device.gatt.connected) onDrop();
-  else say(`${what} failed: ${why(e)}`, true);
+  else addLog(`web: ${what} failed: ${why(e)}`);
 }
 
 async function pick(i) {
@@ -282,7 +284,6 @@ async function pick(i) {
   try {
     await select.writeValue(new Uint8Array([i]));  // raw byte; the board also accepts text digits
     highlight(i);  // right away; the board's notification confirms it after drawing
-    say(`showing ${names[i]}`);
   } catch (e) {
     failed('send', e);
   }
@@ -302,7 +303,6 @@ slider.oninput = async () => {
       await bright.writeValue(new Uint8Array([v]));
       boardBright = v;
     }
-    say(`brightness ${slider.value}%`);
   } catch (e) {
     wanted = null;
     failed('brightness', e);  // a drop puts the slider back to the board's level

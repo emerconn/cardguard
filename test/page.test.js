@@ -9,7 +9,7 @@ const html = fs.readFileSync(path.join(__dirname, '../web/index.html'), 'utf8');
 const script = html.split('<script>')[1].split('</script>')[0];
 
 // Loads the page script into a fresh fake browser; returns handles to drive and inspect it.
-function loadPage() {
+function loadPage({ bluetooth = true } = {}) {
   const els = {};
   const el = () => {
     const classes = new Set();
@@ -81,7 +81,12 @@ function loadPage() {
     const value = new TextEncoder().encode(line);
     for (const f of characteristic('7c0bd792-ba8a-4791-be95-3c354c4c2fd2').listeners) f({ target: { value } });
   };
-  const navigator = { bluetooth: { requestDevice: async () => { board.pickerOpened++; return device; } } };
+  const requestDevice = async () => {
+    board.pickerOpened++;
+    if (board.cancelPicker) throw Object.assign(new Error('cancelled'), { name: 'NotFoundError' });
+    return device;
+  };
+  const navigator = bluetooth ? { bluetooth: { requestDevice } } : {};
   const localStorage = { getItem: () => null, setItem() {} };
   const fastTimeout = (f, ms) => setTimeout(f, ms / 1000);  // 10 s connect timeout -> 10 ms, 1 s retry -> 1 ms
 
@@ -93,13 +98,16 @@ function loadPage() {
   const frozen = () => els.bright.disabled && guards().every((b) => b.disabled);
   const live = () => !els.bright.disabled && guards().every((b) => !b.disabled);
   const guards = () => els.guards.childNodes;
+  const logged = (re) => els.log.childNodes.some((t) => re.test(t));  // status details live in the debug log
   const highlighted = () => guards().flatMap((b, i) => (b.classes.has('on') ? [i] : []));
-  return { els, document, device, board, boardDrops, tick, until, frozen, live, guards, highlighted, button: els.connect, status: els.status };
+  return { els, document, device, board, boardDrops, tick, until, frozen, live, guards, highlighted, button: els.connect, logged };
 }
 
 async function connected() {
   const p = loadPage();
-  await p.button.onclick();
+  const tap = p.button.onclick();
+  assert.equal(p.button.textContent, 'connecting…');
+  await tap;
   await p.tick();
   assert.equal(p.button.textContent, 'disconnect');
   assert.ok(p.live());
@@ -160,16 +168,17 @@ test('board drops (sleep, reset): controls freeze, then it reconnects by itself'
   const p = await connected();
   p.board.reachable = false;  // asleep
   p.boardDrops();
-  assert.equal(p.button.textContent, 'connect');
-  assert.match(p.status.textContent, /reconnecting/);
+  assert.equal(p.button.textContent, 'connecting…');
+  assert.ok(p.logged(/reconnecting/));
   assert.ok(p.frozen());
 
   await p.tick(20);  // a few retries while asleep: still frozen
   assert.ok(p.frozen());
+  assert.equal(p.button.textContent, 'connecting…');  // timed-out tries cancel and fire drops; the label holds
 
   p.board.reachable = true;  // woken up
   await p.until(() => p.button.textContent === 'disconnect');
-  assert.match(p.status.textContent, /reconnected/);
+  assert.ok(p.logged(/reconnected/));
   assert.ok(p.live());
   assert.equal(p.board.pickerOpened, 1);  // no picker for a reconnect
 });
@@ -203,7 +212,8 @@ test('silent drop while away: coming back shows it and reconnects', async () => 
   const p = await connected();
   p.device.gatt.connected = false;  // dropped while Bluefy was paused: no disconnect event
   p.document.listeners.visibilitychange();
-  assert.match(p.status.textContent, /reconnecting/);
+  assert.ok(p.logged(/reconnecting/));
+  assert.equal(p.button.textContent, 'connecting…');
   await p.until(() => p.button.textContent === 'disconnect');
   assert.ok(p.live());
 });
@@ -222,7 +232,7 @@ test('retries give up after a while; connect then goes straight back without the
   const p = await connected();
   p.board.reachable = false;
   p.boardDrops();
-  await p.until(() => /not found/.test(p.status.textContent), 10000);  // ~120 tries
+  await p.until(() => p.logged(/not found/), 10000);  // ~120 tries
   assert.equal(p.button.textContent, 'connect');
   assert.ok(p.frozen());
 
@@ -238,14 +248,13 @@ test('a failed connect tap keeps retrying, so waking the board brings it back', 
   p.board.failFast = true;  // asleep, and Bluefy rejects at once with "2"
   p.boardDrops();
   await p.button.onclick();
-  assert.match(p.status.textContent, /not reachable; is it awake\? retrying/);
-  assert.doesNotMatch(p.status.textContent, /\b2\b/);  // the raw code goes to the debug log, not the status
-  assert.equal(p.button.textContent, 'connect');
+  assert.ok(p.logged(/connect failed: 2; retrying/));
+  assert.equal(p.button.textContent, 'connecting…');
 
   await p.tick(20);
   p.board.failFast = false;  // woken up; iOS reconnects on its own
   await p.until(() => p.button.textContent === 'disconnect');
-  assert.match(p.status.textContent, /reconnected/);
+  assert.ok(p.logged(/reconnected/));
   assert.ok(p.live());
 });
 
@@ -268,7 +277,7 @@ test('tapping a stale disconnect never opens the picker', async () => {
   assert.equal(p.board.pickerOpened, 1);
   assert.equal(p.button.textContent, 'connect');
   assert.equal(p.guards().length, 0);
-  assert.match(p.status.textContent, /disconnected/);
+  assert.ok(p.logged(/disconnected/));
 });
 
 test('board log: a replay shows only unseen lines, a restarted board shows all', async () => {
@@ -285,6 +294,18 @@ test('board log: a replay shows only unseen lines, a restarted board shows all',
   assert.deepEqual(shown(), [
     'cardguard v1.2.0', 'ble: subscribed', 'heap: 17 KB free', 'ble: connected', 'cardguard v1.2.0', 'older firmware line',
   ]);
+});
+
+test('without Web Bluetooth the button says to use Bluefy', () => {
+  const p = loadPage({ bluetooth: false });
+  assert.equal(p.button.textContent, 'open this page in Bluefy');
+});
+
+test('cancelling the picker goes back to connect', async () => {
+  const p = loadPage();
+  p.board.cancelPicker = true;
+  await p.button.onclick();
+  assert.equal(p.button.textContent, 'connect');
 });
 
 test('disconnect clears the controls and does not reconnect', async () => {
