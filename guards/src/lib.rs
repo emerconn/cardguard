@@ -10,9 +10,9 @@ use smooth::{fcos, fsin, rad, rgb565, Font, Smooth};
 
 pub type Scene = fn(&mut Smooth<'_>);
 
-pub static GUARDS: [Scene; 4] = [chip_leader, ducks, jack_king_off, donk];
+pub static GUARDS: [Scene; 5] = [chip_leader, ducks, jack_king_off, donk, bullets];
 /// Shown in the web app (sent over BLE), same order as GUARDS.
-pub static GUARD_NAMES: [&str; GUARDS.len()] = ["Chip Leader", "Ducks", "Jack King Off", "Donk"];
+pub static GUARD_NAMES: [&str; GUARDS.len()] = ["Chip Leader", "Ducks", "Jack King Off", "Donk", "Bullets"];
 
 const BLACK: u16 = 0;
 const GOLD_L: u16 = rgb565(251, 224, 138);
@@ -392,6 +392,49 @@ fn donk(s: &mut Smooth) {
     pip_card(s, 86.0, 124.0, -15.0, b'7', -1.0, spade, INK);
     pip_card(s, 154.0, 124.0, 15.0, b'2', 1.0, diamond, RED);
     donkey(s);
+}
+
+/// A gold revolver about 26 x 50 px times k pointing up, centred on (x, y); m = 1 puts the grip and
+/// trigger guard to the right and the barrel and hammer to the left, -1 mirrors it.
+fn revolver(s: &mut Smooth, x: f32, y: f32, k: f32, m: f32) {
+    let (px, py) = (|dx: f32| x + dx * m * k, |dy: f32| y + dy * k);
+    s.rect(px(-3.0) - 2.0 * k, py(-26.0), 4.0 * k, 26.0 * k, GOLD); // barrel, flush with the frame edge opposite the grip
+    s.rrect(x, py(2.0), 10.0 * k, 14.0 * k, 2.5 * k, 0.0, GOLD); // cylinder
+    s.rect(x - 3.0 * k, py(-2.0), 6.0 * k, 1.2 * k, INK);
+    s.rect(x - 3.0 * k, py(3.0), 6.0 * k, 1.2 * k, INK);
+    s.tri(px(-5.0), py(3.0), px(-5.0), py(9.0), px(-10.0), py(13.0), GOLD); // hammer spur, pointing back
+    s.circle(px(7.5), py(10.0), 4.5 * k, GOLD); // trigger guard, under the cylinder in front of the grip
+    s.circle(px(7.5), py(10.0), 2.8 * k, INK);
+    s.poly(&[px(-5.0), py(8.0), px(3.0), py(8.0), px(10.0), py(25.0), px(2.0), py(27.0)], GOLD); // grip
+}
+
+fn bullets(s: &mut Smooth) {
+    s.fill(BLACK);
+    s.circle_grad(120.0, 120.0, 119.5, GOLD_L, GOLD_D, 113.0);
+    s.circle_grad(120.0, 120.0, 113.0, INK, INK, 84.0);
+    // Gold spokes split the band into the top and bottom text and the two gun panels.
+    for a in [-138.0f32, -42.0, 42.0, 138.0] {
+        let t = rad(a);
+        let (c, n) = (fcos(t), fsin(t));
+        let (dx, dy) = (-n * 1.2, c * 1.2);
+        s.poly(&[120.0 + 84.0 * c + dx, 120.0 + 84.0 * n + dy, 120.0 + 113.0 * c + dx, 120.0 + 113.0 * n + dy, 120.0 + 113.0 * c - dx, 120.0 + 113.0 * n - dy, 120.0 + 84.0 * c - dx, 120.0 + 84.0 * n - dy], GOLD);
+    }
+    s.circle_grad(120.0, 120.0, 84.0, GOLD_L, GOLD_D, 79.0); // hole: the black centre covers it
+    s.circle(120.0, 120.0, 80.0, BLACK); // smooth inner edge
+    ring_text(s, &BAND, "BULLETS", 98.0, false, GOLD, 0.0);
+    ring_text(s, &BAND, "PAIR OF ACES", 98.0, true, GOLD, 0.0);
+    // Revolvers pointing up, each with three bullets above it.
+    for (x, m) in [(26.0f32, 1.0f32), (214.0, -1.0)] {
+        revolver(s, x, 140.0, 1.1, m);
+        for (dx, y) in [(5.0, 75.0), (-5.5, 88.0), (-2.5, 101.0)] {
+            s.rrect(x + m * dx, y, 4.2, 9.0, 2.1, 0.0, GOLD); // upright and staggered like the original
+        }
+    }
+
+    pip_card(s, 101.0, 118.0, -12.0, b'A', -1.0, diamond, RED);
+    diamond(s, 101.0 + 4.0, 118.0 + 10.0, RED, 1.5, -12.0);
+    pip_card(s, 142.0, 122.0, 10.0, b'A', -1.0, spade, INK);
+    spade(s, 142.0 + 2.0, 122.0 + 10.0, INK, 1.9, 10.0);
 }
 
 /// Shown briefly when a client asks for a guard that doesn't exist; not a guard itself.
