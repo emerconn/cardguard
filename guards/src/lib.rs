@@ -491,8 +491,7 @@ fn hook(s: &mut Smooth, x: f32, y: f32, k: f32, m: f32, deg: f32) {
     for a in [0.0, 90.0] {
         s.arc(p.x(-6.0 * m, 4.0), p.y(-6.0 * m, 4.0), 6.0 * k, 2.0 * w * k, deg + a, deg + a + 90.0, GOLD); // bend
     }
-    // Barb: flares well inward of the wire so the black notch under it reads clearly.
-    s.tri(p.x(-12.0 * m, -7.0), p.y(-12.0 * m, -7.0), p.x(-14.2 * m, -1.0), p.y(-14.2 * m, -1.0), p.x(-7.5 * m, 2.0), p.y(-7.5 * m, 2.0), GOLD);
+    s.tri(p.x(-12.0 * m, -6.0), p.y(-12.0 * m, -6.0), p.x(-14.0 * m, 0.0), p.y(-14.0 * m, 0.0), p.x(-9.0 * m, 1.0), p.y(-9.0 * m, 1.0), GOLD); // barb
     s.circle(p.x(0.0, -15.5), p.y(0.0, -15.5), 2.8 * k, GOLD); // eye
     s.circle(p.x(0.0, -15.5), p.y(0.0, -15.5), 1.3 * k, INK);
 }
