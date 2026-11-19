@@ -423,12 +423,10 @@ fn bullets(s: &mut Smooth) {
     ring_text(s, &BAND, "BULLETS", 98.0, false, GOLD, 0.0);
     ring_text(s, &BAND, "PAIR OF ACES", 98.0, true, GOLD, 0.0);
     // Revolvers with grips turned in, each firing three bullets up along the band.
-    for (x, m, a0) in [(24.0f32, 1.0f32, 180.0f32), (216.0, -1.0, 0.0)] {
+    for (x, m) in [(24.0f32, 1.0f32), (216.0, -1.0)] {
         revolver(s, x, 130.0, m);
-        for i in 0..3 {
-            let a = a0 + m * (15.0 + 7.0 * i as f32);
-            let t = rad(a);
-            s.rrect(120.0 + 97.0 * fcos(t), 120.0 + 97.0 * fsin(t), 4.2, 9.0, 2.1, a - a0, CREAM);
+        for (dx, y) in [(14.0, 71.0), (3.5, 80.0), (5.5, 93.0)] {
+            s.rrect(x + m * dx, y, 4.2, 9.0, 2.1, 0.0, GOLD); // upright and staggered like the original
         }
     }
 
