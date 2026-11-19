@@ -173,7 +173,9 @@ async fn main(spawner: Spawner) -> ! {
     esp_println::logger::init_logger_from_env();
     // 80 MHz: lower power; BLE needs at least 80
     let p = esp_hal::init(esp_hal::Config::default().with_cpu_clock(CpuClock::_80MHz));
-    esp_alloc::heap_allocator!(#[esp_hal::ram(reclaimed)] size: 66320);
+    esp_alloc::heap_allocator!(#[esp_hal::ram(reclaimed)] size: 66320); // all of the bootloader's leftover RAM
+    // + the BLE thread's stack (12 KB, ~6 KB used at peak), from main RAM, which the main stack barely uses.
+    esp_alloc::heap_allocator!(size: BLE_STACK);
     let timg0 = TimerGroup::new(p.TIMG0);
     esp_rtos::start(timg0.timer0, p.FROM_CPU_INTR0);
 
@@ -293,6 +295,7 @@ async fn main(spawner: Spawner) -> ! {
                 // "Off": backlight and panel off, chip in light sleep until the button is pressed again.
                 // Light, not deep: the C3 wakes from deep sleep only on GPIO0-5 and BOOT is GPIO9.
                 log!("power: sleep");
+                let logged = esp_hal::time::Instant::now(); // a timer wake counts from the line the test sees
                 Timer::after_millis(5).await; // let the line leave USB before it suspends
                 set_backlight(&backlight, 0);
                 display.sleep().await;
@@ -302,7 +305,7 @@ async fn main(spawner: Spawner) -> ! {
                 btn.apply_wakeup_config(&WakeupConfig::default()).unwrap();
                 if secs > 0 {
                     // serial 'z' (test/hardware/reconnect_time.py): also wake by timer, no button needed
-                    lp.set_wakeup_deadline(esp_hal::time::Instant::now() + esp_hal::time::Duration::from_secs(secs));
+                    lp.set_wakeup_deadline(logged + esp_hal::time::Duration::from_secs(secs));
                 }
                 if save_at.is_some() {
                     save_brightness(&mut flash, brightness); // the reset below would lose it
