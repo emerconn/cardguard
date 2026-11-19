@@ -106,16 +106,21 @@ fn chip_leader(s: &mut Smooth) {
     s.circle_grad(120.0, 120.0, 84.0, GOLD_L, GOLD_D, 81.0);
     s.circle(120.0, 120.0, 81.0, PAPER);
 
-    s.clip(81.0); // stripe stays inside the white face
-    s.rect(0.0, 138.0, 240.0, 26.0, INK);
+    s.clip(81.0); // bands stay inside the white face; gold edges run out to the ring
+    s.rect(0.0, 77.5, 240.0, 37.0, GOLD);
+    s.rect(0.0, 79.5, 240.0, 33.0, PAPER);
+    s.rect(0.0, 135.0, 240.0, 36.0, GOLD);
+    s.rect(0.0, 137.0, 240.0, 32.0, INK);
     s.clip(0.0);
 
-    let outline = [73.5, 105.5, 166.5, 105.5, 166.5, 139.0, 120.0, 183.5, 73.5, 139.0];
-    let body = [78.5, 110.5, 161.5, 110.5, 161.5, 137.0, 120.0, 176.5, 78.5, 137.0];
-    s.poly(&outline, INK);
+    let outline = [66.0, 76.0, 174.0, 76.0, 174.0, 128.0, 120.0, 186.0, 66.0, 128.0];
+    let body = [67.5, 77.5, 172.5, 77.5, 172.5, 127.4, 120.0, 183.8, 67.5, 127.4];
+    s.poly(&outline, GOLD);
     s.poly(&body, PAPER);
-    s.tri(84.0, 121.0, 117.0, 121.0, 117.0, 166.0, RED); // split by a white T, as on the coin
-    s.tri(123.0, 121.0, 156.0, 121.0, 123.0, 166.0, INK);
+    s.tri(76.95, 119.5, 118.5, 119.5, 118.5, 173.4, GOLD); // 1.5px gold borders
+    s.tri(121.5, 119.5, 163.05, 119.5, 121.5, 173.4, GOLD);
+    s.tri(80.0, 121.0, 117.0, 121.0, 117.0, 169.0, RED); // split by a white T, as on the coin
+    s.tri(123.0, 121.0, 160.0, 121.0, 123.0, 169.0, INK);
 
     s.rect(67.0, 83.0, 106.0, 32.0, GOLD_D);
     s.rect(69.5, 85.5, 101.0, 27.0, GOLD);
