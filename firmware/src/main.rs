@@ -173,7 +173,9 @@ async fn main(spawner: Spawner) -> ! {
     esp_println::logger::init_logger_from_env();
     // 80 MHz: lower power; BLE needs at least 80
     let p = esp_hal::init(esp_hal::Config::default().with_cpu_clock(CpuClock::_80MHz));
-    esp_alloc::heap_allocator!(#[esp_hal::ram(reclaimed)] size: 66320);
+    esp_alloc::heap_allocator!(#[esp_hal::ram(reclaimed)] size: 66320); // all of the bootloader's leftover RAM
+    // + the BLE thread's stack (12 KB, ~6 KB used at peak), from main RAM, which the main stack barely uses.
+    esp_alloc::heap_allocator!(size: BLE_STACK);
     let timg0 = TimerGroup::new(p.TIMG0);
     esp_rtos::start(timg0.timer0, p.FROM_CPU_INTR0);
 
