@@ -24,6 +24,7 @@
   #light input { width: 100%; accent-color: var(--gold); }
   header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
   h1 { margin: 0; }
+  #ver { margin: 2px 0 0; font-size: 13px; opacity: .6; }
   #logToggle { display: inline-block; width: auto; margin: 0; padding: 6px 14px; border-radius: 999px;
                font-size: 15px; text-align: center; }
   #logToggle[aria-pressed="true"] { border-color: var(--gold); color: var(--gold); }
@@ -35,7 +36,10 @@
 </head>
 <body>
 <header>
-  <h1>cardguard</h1>
+  <div>
+    <h1>cardguard</h1>
+    <p id="ver" hidden>app <span id="appVer"></span> · board <span id="boardVer">not connected</span></p>
+  </div>
   <button id="logToggle" aria-pressed="false">debug</button>
 </header>
 <button id="connect">connect</button>
@@ -56,14 +60,15 @@ const LOG = '7c0bd792-ba8a-4791-be95-3c354c4c2fd2';     // board log lines, as n
 const VERSION = '30598302-24ed-4ff4-8c09-c9091182cab0'; // firmware version text (git tag)
 const APP_VERSION = 'dev';  // replaced by the release tag at deploy (pages.yml)
 
-// Debug mode: the log panel, and the versions (the app's on the toggle, the board's on disconnect).
+// Debug mode: the log panel, and the versions line under the title.
 // Log lines are collected even while hidden; the toggle is remembered in this browser.
 const logBox = document.getElementById('log'), logToggle = document.getElementById('logToggle');
+const ver = document.getElementById('ver'), boardVer = document.getElementById('boardVer');
+document.getElementById('appVer').textContent = APP_VERSION;
 function showLog(on) {
   logBox.hidden = !on;
   logToggle.setAttribute('aria-pressed', on);
-  logToggle.textContent = on ? APP_VERSION : 'debug';
-  connectLabel();
+  ver.hidden = !on;
   try { localStorage.setItem('showLog', on ? '1' : ''); } catch (e) {}
   if (on) logBox.scrollTop = logBox.scrollHeight;
 }
@@ -91,7 +96,6 @@ const list = document.getElementById('guards');
 const light = document.getElementById('light');
 const slider = document.getElementById('bright'), pct = document.getElementById('pct');
 let device = null, select = null, bright = null, names = [], buttons = [];
-let boardVersion = '';  // read on each connect
 let boardBright = null;  // last brightness the board confirmed (read, or written OK); the slider returns to it on a drop
 function showBright(v) { slider.value = v; pct.textContent = v + '%'; }
 
@@ -129,9 +133,9 @@ async function attach() {
     addLog(`web: log unavailable: ${why(e)}`);  // logging must never block connecting
   }
   try {
-    boardVersion = new TextDecoder().decode(await (await svc.getCharacteristic(VERSION)).readValue());
+    boardVer.textContent = new TextDecoder().decode(await (await svc.getCharacteristic(VERSION)).readValue());
   } catch (e) {
-    boardVersion = 'unknown';  // firmware before the version characteristic
+    boardVer.textContent = 'unknown (older firmware)';  // firmware before the version characteristic
   }
   names = new TextDecoder().decode(await (await svc.getCharacteristic(NAMES)).readValue()).split('\n');
   list.replaceChildren();
@@ -167,10 +171,10 @@ function highlight(i) {
 const connectBtn = document.getElementById('connect');
 let leaving = false;  // true while the user is disconnecting on purpose
 let up = false, connecting = false;
-// In debug mode "disconnect" also shows the board's firmware version. Status details go to the debug log.
+// Status details go to the debug log.
 function connectLabel() {
   connectBtn.textContent = !navigator.bluetooth ? 'open this page in Bluefy'
-    : up ? (logBox.hidden ? 'disconnect' : `disconnect · ${boardVersion}`)
+    : up ? 'disconnect'
     : connecting ? 'connecting…' : 'connect';
   // A tap while trying adds nothing (the retries run every 0.3 s), and a second picker would race the first.
   connectBtn.disabled = !navigator.bluetooth || (connecting && !up);
@@ -179,6 +183,7 @@ function setConnecting(on) {
   connecting = on;
   connectLabel();
 }
+connectLabel();  // no Web Bluetooth: the Bluefy hint from the start
 function setConnected(on) {
   up = on;
   if (on) connecting = false;  // not on a drop: retries cancel a pending connect, which fires a drop
@@ -315,7 +320,6 @@ slider.oninput = async () => {
   }
 };
 
-// Last: showLog relabels the connect button, defined above.
 try { showLog(localStorage.getItem('showLog') === '1'); } catch (e) {}
 </script>
 </body>
