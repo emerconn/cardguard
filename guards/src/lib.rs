@@ -107,8 +107,8 @@ fn chip_leader(s: &mut Smooth) {
     s.circle(120.0, 120.0, 81.0, PAPER);
 
     s.clip(81.0); // bands stay inside the white face; gold edges run out to the ring
-    s.rect(0.0, 77.5, 240.0, 34.5, GOLD); // bottom line ends level with the POKER plaque
-    s.rect(0.0, 79.5, 240.0, 30.5, PAPER);
+    s.rect(0.0, 76.0, 240.0, 36.0, GOLD); // top line level with the shield top
+    s.rect(0.0, 77.5, 240.0, 32.5, PAPER);
     s.rect(0.0, 147.0, 240.0, 24.0, GOLD);
     s.rect(0.0, 149.0, 240.0, 20.0, INK);
     s.clip(0.0);
@@ -124,9 +124,9 @@ fn chip_leader(s: &mut Smooth) {
     s.tri(77.0, 122.0, 116.0, 122.0, 116.0, 169.5, RED);
     s.tri(124.0, 122.0, 163.0, 122.0, 124.0, 169.5, INK);
 
-    s.rect(69.0, 83.0, 102.0, 29.0, INK); // white gap to the shield's gold edge
-    s.rect(71.0, 85.0, 98.0, 25.0, GOLD);
-    text(s, &HEADLINE, "POKER", 119.75, 97.5, RED);
+    s.rect(69.0, 79.0, 102.0, 29.0, INK); // white gap to the shield's gold edge
+    s.rect(71.0, 81.0, 98.0, 25.0, GOLD);
+    text(s, &HEADLINE, "POKER", 119.75, 93.5, RED);
 
     spade(s, 84.0, 66.0, INK, 1.0, 0.0);
     heart(s, 108.0, 66.0, RED, 1.0, 0.0);
