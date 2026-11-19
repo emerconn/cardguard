@@ -278,7 +278,9 @@ fn court_card(s: &mut Smooth, cx: f32, cy: f32, deg: f32, rank: u8, suit: Suit, 
     s.rrect(c.x(5.0, 0.0), c.y(5.0, 0.0), 33.0 * c.k, 63.0 * c.k, 2.0, deg, col);
     s.rrect(c.x(5.0, 0.0), c.y(5.0, 0.0), 30.0 * c.k, 60.0 * c.k, 1.5, deg, PAPER);
 
-    quad(s, -11.0, 21.0, 11.0, 21.0, 8.0, 4.0, -8.0, 4.0, col); // robe with a gold sash
+    // Robe with a gold sash. Its foot runs on under the frame lines (same colour), so no white
+    // shows where two anti-aliased edges would meet at the frame's inner edges (y = 21, x = ±11.5).
+    quad(s, -12.0, 22.0, 12.0, 22.0, 8.0, 4.0, -8.0, 4.0, col);
     quad(s, -2.5, 21.0, 2.5, 21.0, 1.5, 4.0, -1.5, 4.0, GOLD);
     if rank == b'K' {
         circle(s, 0.0, -1.0, 5.5, HAIR); // beard
