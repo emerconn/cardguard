@@ -484,15 +484,21 @@ fn limb(s: &mut Smooth, ax: f32, ay: f32, bx: f32, by: f32, w0: f32, w1: f32, c:
 
 fn single_moms(s: &mut Smooth) {
     banner_frame(s, CREAM, &BAND, "I SUPPORT", &BAND, "SINGLE MOMS");
-    // Points measured on the reference photo (assets/single_moms.png), mapped onto the black centre.
-    let p = |x: f32, y: f32| (120.0 + (x - 185.0) * 0.64, 120.0 + (y - 179.0) * 0.64);
+    // Points measured on the reference photo (assets/single_moms.png), mapped onto the black centre
+    // and turned about the pole's middle so the pole, which leans 23 across 154 down there, is upright.
+    let (co, sn) = (154.0 / 155.71, 23.0 / 155.71);
+    let p = |x: f32, y: f32| {
+        let (dx, dy) = (x - 171.5, y - 171.0);
+        (120.0 + (dx * co - dy * sn - 13.5) * 0.64, 120.0 + (dx * sn + dy * co - 8.0) * 0.64)
+    };
     let l = |s: &mut Smooth, a: (f32, f32), b: (f32, f32), w0: f32, w1: f32| {
         let (a, b) = (p(a.0, a.1), p(b.0, b.1));
         limb(s, a.0, a.1, b.0, b.1, w0, w1, GOLD);
     };
 
     // Stage and pole: gold edges with a black line down the pole's middle.
-    l(s, (124.0, 252.0), (272.0, 240.0), 1.8, 1.8);
+    let f = p(183.0, 248.0);
+    limb(s, f.0 - 38.0, f.1 + 2.5, f.0 + 57.0, f.1 + 2.5, 1.8, 1.8, GOLD); // level stage
     l(s, (160.0, 94.0), (183.0, 248.0), 4.6, 4.6);
     let (a, b) = (p(160.0, 97.0), p(183.0, 245.0));
     limb(s, a.0, a.1, b.0, b.1, 1.4, 1.4, INK);
