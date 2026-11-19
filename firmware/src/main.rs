@@ -48,7 +48,18 @@ use display::Display;
 
 extern crate alloc;
 
-esp_bootloader_esp_idf::esp_app_desc!();
+// As esp_app_desc!() but with the git tag as the version (build.rs).
+esp_bootloader_esp_idf::esp_app_desc!(
+    env!("CARDGUARD_VERSION"),
+    env!("CARGO_PKG_NAME"),
+    esp_bootloader_esp_idf::BUILD_TIME,
+    esp_bootloader_esp_idf::BUILD_DATE,
+    esp_bootloader_esp_idf::ESP_IDF_COMPATIBLE_VERSION,
+    esp_bootloader_esp_idf::MMU_PAGE_SIZE,
+    0,
+    u16::MAX,
+    esp_bootloader_esp_idf::SECURE_VERSION
+);
 
 // Pins from the vendor's Factory_samples_without_touch sketch (ESP32-2424S012). RST is not wired.
 // SCK 6, MOSI 7, DC 2, CS 10, backlight 3, BOOT button 9.
@@ -206,6 +217,7 @@ async fn main(spawner: Spawner) -> ! {
     let mut display = Display::new(spi, Output::new(p.GPIO2, Level::High, OutputConfig::default())).await;
     show(&mut display, current).await;
 
+    log!("cardguard {}", env!("CARDGUARD_VERSION"));
     // After display + BLE are up, so it shows what designs and features actually leave free.
     log!("heap: {} KB free, {} KB total", esp_alloc::HEAP.free() / 1024, (esp_alloc::HEAP.free() + esp_alloc::HEAP.used()) / 1024);
 
