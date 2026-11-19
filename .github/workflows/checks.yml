@@ -1,0 +1,31 @@
+# Checks on the pull request itself, not the code (tests.yml tests the code). The main ruleset requires
+# them by job id, like the test jobs.
+name: Checks
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, edited, synchronize, reopened]  # edited: fixing a PR title reruns pr-title
+
+permissions:
+  contents: read
+
+jobs:
+  # Squash merges make the PR title the commit on main, so this keeps main's history conventional.
+  pr-title:
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          TITLE: ${{ github.event.pull_request.title }}  # via env, never inlined: a title could carry shell code
+        run: |
+          types='feat|fix|perf|refactor|test|ci|build|docs|style|chore|revert'
+          scopes='ble|display|firmware|guards|power|page|case|fonts|tools|tests|readme|claude|deps'
+          if printf '%s' "$TITLE" | grep -Eq "^($types)(\(($scopes)\))?!?: [^ ].*"; then
+            echo "ok: $TITLE"
+          else
+            echo "::error::PR title must be a Conventional Commit: type(scope): summary"
+            echo "types:  ${types//|/, }"
+            echo "scopes: ${scopes//|/, } (optional)"
+            echo "got:    $TITLE"
+            exit 1
+          fi
