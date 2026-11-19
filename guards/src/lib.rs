@@ -394,18 +394,17 @@ fn donk(s: &mut Smooth) {
     donkey(s);
 }
 
-/// A gold revolver about 22 x 52 px pointing up, centred on (x, y); m = 1 puts the grip to the
-/// right, -1 to the left.
+/// A gold revolver about 26 x 50 px pointing up, centred on (x, y); m = 1 puts the grip and
+/// trigger guard to the right and the hammer to the left, -1 mirrors it.
 fn revolver(s: &mut Smooth, x: f32, y: f32, m: f32) {
-    s.rect(x - 2.0, y - 26.0, 4.0, 22.0, GOLD); // barrel with a front sight
-    s.rect(x - 2.0 * m - 1.0, y - 29.0, 2.0, 3.5, GOLD);
+    s.rect(x - 2.0, y - 26.0, 4.0, 22.0, GOLD); // barrel
     s.rrect(x, y + 2.0, 10.0, 14.0, 2.5, 0.0, GOLD); // cylinder
     s.rect(x - 3.0, y - 2.0, 6.0, 1.2, INK);
     s.rect(x - 3.0, y + 3.0, 6.0, 1.2, INK);
-    s.tri(x + 3.0 * m, y - 4.0, x + 8.0 * m, y - 8.0, x + 5.0 * m, y + 1.0, GOLD); // hammer
-    s.poly(&[x - 4.0 * m, y + 7.0, x + 5.0 * m, y + 6.0, x + 13.0 * m, y + 22.0, x + 5.0 * m, y + 25.0], GOLD); // grip
-    s.circle(x - 5.0 * m, y + 13.0, 4.5, GOLD); // trigger guard
-    s.circle(x - 5.0 * m, y + 13.0, 2.8, INK);
+    s.tri(x - 4.0 * m, y + 4.0, x - 4.0 * m, y + 10.0, x - 10.0 * m, y + 12.0, GOLD); // hammer
+    s.poly(&[x - 5.0 * m, y + 8.0, x + 3.0 * m, y + 8.0, x + 10.0 * m, y + 25.0, x + 2.0 * m, y + 27.0], GOLD); // grip
+    s.circle(x + 6.0 * m, y + 7.0, 4.5, GOLD); // trigger guard, in front of the grip
+    s.circle(x + 6.0 * m, y + 7.0, 2.8, INK);
 }
 
 fn bullets(s: &mut Smooth) {
@@ -424,7 +423,7 @@ fn bullets(s: &mut Smooth) {
     ring_text(s, &BAND, "PAIR OF ACES", 98.0, true, GOLD, 0.0);
     // Revolvers with grips turned in, each firing three bullets up along the band.
     for (x, m) in [(24.0f32, 1.0f32), (216.0, -1.0)] {
-        revolver(s, x, 130.0, m);
+        revolver(s, x, 130.0, -m);
         for (dx, y) in [(14.0, 71.0), (3.5, 80.0), (5.5, 93.0)] {
             s.rrect(x + m * dx, y, 4.2, 9.0, 2.1, 0.0, GOLD); // upright and staggered like the original
         }
