@@ -148,12 +148,13 @@ fn chip_leader(s: &mut Smooth) {
     let body = [67.5, 77.5, 172.5, 77.5, 172.5, 127.4, 120.0, 183.8, 67.5, 127.4];
     s.poly(&outline, GOLD);
     s.poly(&body, PAPER);
-    // Measured off the coin: flat top, vertical inner edge, outer edge along the shield side.
+    // Flat top level with where the shield's sides turn into the chevron (y 127.4), vertical inner
+    // edge, outer edge parallel to the chevron 5 px in, so the gap is even all the way down.
     // The gold copies, grown 1.5px, are the borders.
-    s.tri(73.83, 120.5, 117.5, 120.5, 117.5, 173.7, GOLD);
-    s.tri(122.5, 120.5, 166.17, 120.5, 122.5, 173.7, GOLD);
-    s.tri(77.0, 122.0, 116.0, 122.0, 116.0, 169.5, RED);
-    s.tri(124.0, 122.0, 163.0, 122.0, 124.0, 169.5, INK);
+    s.tri(74.33, 127.4, 117.5, 127.4, 117.5, 173.78, GOLD);
+    s.tri(122.5, 127.4, 165.67, 127.4, 122.5, 173.78, GOLD);
+    s.tri(77.78, 128.9, 116.0, 128.9, 116.0, 169.96, RED);
+    s.tri(124.0, 128.9, 162.22, 128.9, 124.0, 169.96, INK);
 
     s.rect(69.0, 79.0, 102.0, 29.0, INK); // white gap to the shield's gold edge
     s.rect(71.0, 81.0, 98.0, 25.0, GOLD);
