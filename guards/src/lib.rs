@@ -49,6 +49,25 @@ fn ring_text(s: &mut Smooth, t: &TextStyle, str: &str, r: f32, bottom: bool, c: 
     s.arc_text(t.font, t.scale, str, r, deg, t.spacing + extra, c, bottom);
 }
 
+/// Half the angle, in degrees, that ring_text spans with the same arguments.
+fn ring_text_half(t: &TextStyle, str: &str, r: f32, extra: f32) -> f32 {
+    let sp = t.spacing + extra;
+    let len: f32 = str.bytes().map(|ch| Smooth::advance(t.font, t.scale, ch) + sp).sum();
+    (len - sp) / 2.0 / r * 180.0 / core::f32::consts::PI
+}
+
+/// n stars a side, evenly spaced (and as far from the text) in the gaps between the top and bottom ring_text.
+fn ring_stars(s: &mut Smooth, top: (&TextStyle, &str, f32), bottom: (&TextStyle, &str, f32), r: f32, n: u32, size: f32) {
+    let a0 = -90.0 + ring_text_half(top.0, top.1, r, top.2);
+    let a1 = 90.0 - ring_text_half(bottom.0, bottom.1, r, bottom.2);
+    for i in 1..=n {
+        let side = a0 + (a1 - a0) * i as f32 / (n + 1) as f32;
+        for a in [side, 180.0 - side] {
+            star(s, 120.0 + r * fcos(rad(a)), 120.0 + r * fsin(rad(a)), size, GOLD);
+        }
+    }
+}
+
 /// Maps shape-local offsets to the screen: centred on (x, y), scaled by k, rotated by deg.
 struct Place {
     x0: f32,
@@ -389,12 +408,7 @@ fn donk(s: &mut Smooth) {
 
     ring_text(s, &BAND, "I'M A DONK", 99.0, false, GOLD, 5.0); // spaced out like the original
     ring_text(s, &BAND_LONG, "SEVEN TWO OFFSUIT", 99.0, true, GOLD, 0.0);
-    for side in [-30.0f32, -15.0, 0.0, 15.0] {
-        for left in [false, true] {
-            let a = rad(if left { 180.0 - side } else { side });
-            star(s, 120.0 + 99.0 * fcos(a), 120.0 + 99.0 * fsin(a), 6.5, GOLD);
-        }
-    }
+    ring_stars(s, (&BAND, "I'M A DONK", 5.0), (&BAND_LONG, "SEVEN TWO OFFSUIT", 0.0), 99.0, 4, 6.5);
 
     pip_card(s, 86.0, 124.0, -15.0, b'7', -1.0, spade, INK);
     pip_card(s, 154.0, 124.0, 15.0, b'2', 1.0, diamond, RED);
@@ -536,17 +550,23 @@ fn mini_card(s: &mut Smooth, cx: f32, cy: f32, deg: f32, rank: u8, suit: Suit, c
 /// from the forehead over the top, down her back and in a lock beside her face, bare shoulder on the
 /// right, forearm with a bangle rising to the cards. Each group: dark grown pass = outline, then fill.
 fn virgin(s: &mut Smooth) {
+    // Hair swept over the top, down the back, and in a lock beside the face.
+    let hair = [(126.0, 60.0, 48.0, 20.0, 10.0), (172.0, 108.0, 22.0, 50.0, -20.0), (92.0, 98.0, 11.0, 34.0, 15.0)];
     for pass in 0..2 {
         let (g, c) = if pass == 1 { (0.0, GOLD_L) } else { (1.6, GOLD_D) };
-        s.ellipse(126.0, 60.0, 48.0 + g, 20.0 + g, 10.0, c); // hair swept over the top
-        s.ellipse(172.0, 108.0, 22.0 + g, 50.0 + g, -20.0, c); // ... and down the back
-        s.ellipse(92.0, 98.0, 11.0 + g, 34.0 + g, 15.0, c); // ... and beside the face
+        for (x, y, rx, ry, deg) in hair {
+            s.ellipse(x, y, rx + g, ry + g, deg, c);
+        }
     }
-    for r in [36.0, 41.0, 46.0, 51.0, 56.0, 61.0] {
-        s.arc(132.0, 110.0, r, 1.2, -165.0, 10.0, GOLD_D); // strands following the sweep
-    }
-    for x in [86.0, 93.0] {
-        limb(s, x, 70.0, x - 7.0, 128.0, 1.2, 1.2, GOLD_D);
+    for (x, y, rx, ry, deg) in hair {
+        // strands: the outline repeated inwards, so they never leave the hair; stop before the
+        // ends turn too tightly to stay sharp
+        let mut d = 5.0;
+        while rx.min(ry) - d >= 9.0 {
+            s.ellipse(x, y, rx - d, ry - d, deg, GOLD_D);
+            s.ellipse(x, y, rx - d - 1.5, ry - d - 1.5, deg, GOLD_L);
+            d += 5.0;
+        }
     }
     for pass in 0..2 {
         let (g, c) = if pass == 1 { (0.0, GOLD_L) } else { (1.6, GOLD_D) };
@@ -558,7 +578,6 @@ fn virgin(s: &mut Smooth) {
     }
     s.ellipse(122.0, 68.0, 20.0, 9.0, 20.0, GOLD_D); // fringe over the forehead
     s.ellipse(122.0, 68.0, 18.5, 7.5, 20.0, GOLD_L);
-    s.arc(140.0, 96.0, 30.0, 1.0, -150.0, -100.0, GOLD_D);
     s.arc(106.0, 82.0, 4.5, 1.4, 20.0, 160.0, GOLD_D); // closed eye
     s.arc(108.0, 78.0, 6.5, 1.2, -150.0, -50.0, GOLD_D); // brow
     limb(s, 99.0, 86.0, 102.0, 93.0, 1.4, 1.4, GOLD_D); // nose
