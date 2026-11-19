@@ -112,9 +112,24 @@ test('connect shows disconnect and live guard buttons', async () => {
   assert.equal(p.guards().length, 4);
 });
 
-test('connect shows the board\'s firmware version', async () => {
+test('debug mode shows the app version on its toggle and the board version on disconnect', async () => {
   const p = await connected();
-  assert.equal(p.els.boardVer.textContent, 'v1.2.3');
+  const debug = p.els.logToggle;
+  assert.equal(debug.textContent, 'debug');
+  assert.equal(p.button.textContent, 'disconnect');
+
+  debug.onclick();  // on
+  assert.equal(debug.textContent, 'dev');  // the release tag once deployed
+  assert.equal(p.button.textContent, 'disconnect v1.2.3');
+
+  await p.button.onclick();  // disconnected: no version
+  assert.equal(p.button.textContent, 'connect');
+  await p.button.onclick();
+  assert.equal(p.button.textContent, 'disconnect v1.2.3');
+
+  debug.onclick();  // off
+  assert.equal(debug.textContent, 'debug');
+  assert.equal(p.button.textContent, 'disconnect');
 });
 
 test('connect highlights the guard the board is showing', async () => {

@@ -33,8 +33,8 @@ jobs:
           fetch-depth: 0  # tags, for git describe
       # Same version string as the firmware's (firmware/build.rs).
       - run: |
-          sed -i "s|<span id=\"appVer\">dev</span>|<span id=\"appVer\">$(git describe --tags --always)</span>|" web/index.html
-          ! grep -q '<span id="appVer">dev</span>' web/index.html  # fail if the markup changed and nothing was stamped
+          sed -i "s|const APP_VERSION = 'dev';|const APP_VERSION = '$(git describe --tags --always)';|" web/index.html
+          ! grep -q "const APP_VERSION = 'dev';" web/index.html  # fail if the script changed and nothing was stamped
       - uses: actions/upload-pages-artifact@v5
         with:
           path: web

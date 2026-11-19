@@ -23,7 +23,6 @@
   #light label { display: flex; justify-content: space-between; font-weight: 600; margin-bottom: 8px; }
   #light input { width: 100%; accent-color: var(--gold); }
   .err { color: var(--red); }
-  #ver { margin: 0 0 12px; font-size: 13px; opacity: .6; }
   header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
   h1 { margin: 0; }
   #logToggle { display: inline-block; width: auto; margin: 0; padding: 6px 14px; border-radius: 999px;
@@ -40,8 +39,6 @@
   <h1>cardguard</h1>
   <button id="logToggle" aria-pressed="false">debug</button>
 </header>
-<!-- "dev" is replaced by the release tag at deploy (pages.yml). -->
-<p id="ver">app <span id="appVer">dev</span> · board <span id="boardVer">not connected</span></p>
 <p id="status">not connected</p>
 <button id="connect">connect</button>
 <div id="light" hidden>
@@ -59,17 +56,20 @@ const NAMES = 'ab3ba50e-45cb-4145-ae7e-3066f7e872a8';  // guard names, one per l
 const BRIGHT = '38c7816a-72f6-40eb-b1ab-b01bb0136afc';  // backlight percent 10-100, one byte
 const LOG = '7c0bd792-ba8a-4791-be95-3c354c4c2fd2';     // board log lines, as notifications
 const VERSION = '30598302-24ed-4ff4-8c09-c9091182cab0'; // firmware version text (git tag)
+const APP_VERSION = 'dev';  // replaced by the release tag at deploy (pages.yml)
 
-// Log panel: lines are collected even while hidden; the toggle is remembered in this browser.
+// Debug mode: the log panel, and the versions (the app's on the toggle, the board's on disconnect).
+// Log lines are collected even while hidden; the toggle is remembered in this browser.
 const logBox = document.getElementById('log'), logToggle = document.getElementById('logToggle');
 function showLog(on) {
   logBox.hidden = !on;
   logToggle.setAttribute('aria-pressed', on);
+  logToggle.textContent = on ? APP_VERSION : 'debug';
+  connectLabel();
   try { localStorage.setItem('showLog', on ? '1' : ''); } catch (e) {}
   if (on) logBox.scrollTop = logBox.scrollHeight;
 }
 logToggle.onclick = () => showLog(logBox.hidden);
-try { showLog(localStorage.getItem('showLog') === '1'); } catch (e) {}
 function addLog(text) {
   const atBottom = logBox.scrollHeight - logBox.scrollTop - logBox.clientHeight < 20;
   logBox.append(`${new Date().toLocaleTimeString([], { hour12: false })}  ${text}\n`);
@@ -94,6 +94,7 @@ const list = document.getElementById('guards');
 const light = document.getElementById('light');
 const slider = document.getElementById('bright'), pct = document.getElementById('pct');
 let device = null, select = null, bright = null, names = [], buttons = [];
+let boardVersion = '';  // read on each connect
 let boardBright = null;  // last brightness the board confirmed (read, or written OK); the slider returns to it on a drop
 function showBright(v) { slider.value = v; pct.textContent = v + '%'; }
 
@@ -131,11 +132,10 @@ async function attach() {
   } catch (e) {
     addLog(`web: log unavailable: ${why(e)}`);  // logging must never block connecting
   }
-  const boardVer = document.getElementById('boardVer');
   try {
-    boardVer.textContent = new TextDecoder().decode(await (await svc.getCharacteristic(VERSION)).readValue());
+    boardVersion = new TextDecoder().decode(await (await svc.getCharacteristic(VERSION)).readValue());
   } catch (e) {
-    boardVer.textContent = 'unknown (older firmware)';  // firmware before the version characteristic
+    boardVersion = 'unknown';  // firmware before the version characteristic
   }
   names = new TextDecoder().decode(await (await svc.getCharacteristic(NAMES)).readValue()).split('\n');
   list.replaceChildren();
@@ -171,9 +171,13 @@ function highlight(i) {
 const connectBtn = document.getElementById('connect');
 let leaving = false;  // true while the user is disconnecting on purpose
 let up = false;
+// In debug mode "disconnect" also shows the board's firmware version.
+function connectLabel() {
+  connectBtn.textContent = !up ? 'connect' : logBox.hidden ? 'disconnect' : `disconnect ${boardVersion}`;
+}
 function setConnected(on) {
   up = on;
-  connectBtn.textContent = on ? 'disconnect' : 'connect';
+  connectLabel();
   connectBtn.classList.toggle('off', on);
   buttons.forEach(b => (b.disabled = !on));
   slider.disabled = !on;
@@ -306,6 +310,9 @@ slider.oninput = async () => {
     sending = false;
   }
 };
+
+// Last: showLog relabels the connect button, defined above.
+try { showLog(localStorage.getItem('showLog') === '1'); } catch (e) {}
 </script>
 </body>
 </html>
