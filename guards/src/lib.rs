@@ -106,20 +106,20 @@ fn chip_leader(s: &mut Smooth) {
     s.circle_grad(120.0, 120.0, 84.0, GOLD_L, GOLD_D, 81.0);
     s.circle(120.0, 120.0, 81.0, PAPER);
 
-    s.clip(81.0); // stripes stay inside the white face
-    s.rect(0.0, 86.0, 240.0, 24.0, RED);
-    s.rect(0.0, 126.0, 240.0, 22.0, INK);
+    s.clip(81.0); // stripe stays inside the white face
+    s.rect(0.0, 138.0, 240.0, 26.0, INK);
     s.clip(0.0);
 
     let outline = [73.5, 105.5, 166.5, 105.5, 166.5, 139.0, 120.0, 183.5, 73.5, 139.0];
     let body = [78.5, 110.5, 161.5, 110.5, 161.5, 137.0, 120.0, 176.5, 78.5, 137.0];
     s.poly(&outline, INK);
     s.poly(&body, PAPER);
-    s.tri(92.0, 142.0, 148.0, 142.0, 120.0, 168.0, RED);
+    s.tri(84.0, 121.0, 117.0, 121.0, 117.0, 166.0, RED); // split by a white T, as on the coin
+    s.tri(123.0, 121.0, 156.0, 121.0, 123.0, 166.0, INK);
 
-    s.rect(67.0, 83.0, 106.0, 32.0, GOLD);
-    s.rect(69.5, 85.5, 101.0, 27.0, RED);
-    text(s, &HEADLINE, "POKER", 120.0, 99.0, GOLD);
+    s.rect(67.0, 83.0, 106.0, 32.0, GOLD_D);
+    s.rect(69.5, 85.5, 101.0, 27.0, GOLD);
+    text(s, &HEADLINE, "POKER", 120.0, 99.0, RED);
 
     spade(s, 84.0, 66.0, INK, 1.0, 0.0);
     heart(s, 108.0, 66.0, RED, 1.0, 0.0);
