@@ -76,6 +76,11 @@ function loadPage() {
     const value = { getUint8: () => board.current };
     for (const f of characteristic('6eeb6fbb-9458-47d6-9379-e73cab7dfa04').listeners) f({ target: { value } });
   };
+  // The board sends a log line ("<boot>.<n> text" from current firmware).
+  board.log = (line) => {
+    const value = new TextEncoder().encode(line);
+    for (const f of characteristic('7c0bd792-ba8a-4791-be95-3c354c4c2fd2').listeners) f({ target: { value } });
+  };
   const navigator = { bluetooth: { requestDevice: async () => { board.pickerOpened++; return device; } } };
   const localStorage = { getItem: () => null, setItem() {} };
   const fastTimeout = (f, ms) => setTimeout(f, ms / 1000);  // 10 s connect timeout -> 10 ms, 1 s retry -> 1 ms
@@ -249,6 +254,22 @@ test('tapping a stale disconnect never opens the picker', async () => {
   assert.equal(p.button.textContent, 'connect');
   assert.equal(p.guards().length, 0);
   assert.match(p.status.textContent, /disconnected/);
+});
+
+test('board log: a replay shows only unseen lines, a restarted board shows all', async () => {
+  const p = await connected();
+  const shown = () => p.els.log.childNodes.map((t) => t.split('  ')[1].trim()).filter((t) => !t.startsWith('web:'));
+  p.board.log('a1f0.1 cardguard v1.2.0');
+  p.board.log('a1f0.3 ble: subscribed');  // live line overtakes the replay
+  p.board.log('a1f0.2 heap: 17 KB free');
+  p.board.log('a1f0.1 cardguard v1.2.0');  // reconnect: the board replays its backlog
+  p.board.log('a1f0.2 heap: 17 KB free');
+  p.board.log('a1f0.4 ble: connected');
+  p.board.log('07c3.1 cardguard v1.2.0');  // board restarted: numbers start over
+  p.board.log('older firmware line');
+  assert.deepEqual(shown(), [
+    'cardguard v1.2.0', 'ble: subscribed', 'heap: 17 KB free', 'ble: connected', 'cardguard v1.2.0', 'older firmware line',
+  ]);
 });
 
 test('disconnect clears the controls and does not reconnect', async () => {

@@ -28,6 +28,21 @@ cd ../guards && cargo test     # renderer tests on the PC
 - Editors: rust-analyzer needs `check.allTargets = false` (the firmware has no test harness);
   `.nvim.lua` sets it for Neovim (`vim.o.exrc = true`).
 
+### Flash the latest release
+
+Releases are git tags (`vX.Y.Z`, made on each merge to `main`); there is no binary to download. The
+build takes its version from the tag, so fetch the tags first:
+
+```sh
+git switch main && git pull --tags
+cd firmware && cargo run --release
+```
+
+On a release commit the version reads `v0.2.0`; later commits read like `v0.2.0-2-gabc1234`, and without
+the tags just a commit hash. No tests needed: `main`'s firmware was smoke-tested on the board in its PR.
+Check the board's version in the web app's **debug** log (or `espflash monitor`) after a reset:
+`cardguard v0.2.0`.
+
 Pins are in `firmware/src/main.rs` (vendor pinout, RST not wired). Board specs, pinout, dimensions and sources:
 [`docs/hardware.md`](docs/hardware.md).
 
@@ -47,7 +62,7 @@ Tests: `node --test` for the web app; board tests and setup are in [`test/README
 
 Pick a guard from any Bluetooth LE client: in nRF Connect (iOS/Android) connect to `cardguard`,
 open the service `9a49e65d-…` and write to characteristic `6eeb6fbb-…` the guard number as Text
-(`2`) or as a byte (`02`). Numbers past the last guard show "NO GUARD n" for 3 s (a button press ends it early) and are logged to serial (only the button wraps). Only while the screen is on: sleep turns Bluetooth off, and waking restarts the board on the same guard. The web app reads the guard names from the board (`GUARD_NAMES`) and highlights the guard on screen: the guard characteristic is also readable and notifies every change (web app, BOOT button, error redraw). Its brightness slider sets the backlight (10-100 %, kept across restarts). While connected the **connect** button reads **disconnect**; a deliberate disconnect clears the controls; a dropped connection (board asleep, reset, out of range) freezes them and reconnects by itself (every 0.3 s for ~2 min while the page is open), and **connect** goes straight back to the same board. Its **debug** toggle (top right) shows the board's log lines live (sent as BLE notifications; lines from before the web app connected only reach USB serial). It keeps advertising while connected (up to 3 connections), so a reloaded web app still finds it; connects, disconnects and picks are logged to serial.
+(`2`) or as a byte (`02`). Numbers past the last guard show "NO GUARD n" for 3 s (a button press ends it early) and are logged to serial (only the button wraps). Only while the screen is on: sleep turns Bluetooth off, and waking restarts the board on the same guard. The web app reads the guard names from the board (`GUARD_NAMES`) and highlights the guard on screen: the guard characteristic is also readable and notifies every change (web app, BOOT button, error redraw). Its brightness slider sets the backlight (10-100 %, kept across restarts). While connected the **connect** button reads **disconnect**; a deliberate disconnect clears the controls; a dropped connection (board asleep, reset, out of range) freezes them and reconnects by itself (every 0.3 s for ~2 min while the page is open), and **connect** goes straight back to the same board. Its **debug** toggle (top right) shows the board's log lines live (sent as BLE notifications, numbered per boot; on subscribing it first gets the last 8 lines, so boot lines such as the version and free heap show too, and a reconnect skips lines already shown). It keeps advertising while connected (up to 3 connections), so a reloaded web app still finds it; connects, disconnects and picks are logged to serial.
 
 Text uses fonts generated into `guards/src/fonts.rs`. When a design needs a new character, add it to the
 lists in `tools/fonts.sh` and run it.
