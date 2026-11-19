@@ -2,7 +2,7 @@
 edition      = "2024"
 name         = "cardguard"
 rust-version = "1.95"
-version      = "0.1.0"
+version      = "0.0.0"  # unused: the git tag is the version (build.rs, .github/workflows/release.yml)
 
 [[bin]]
 name = "cardguard"
