@@ -120,12 +120,12 @@ test('debug mode shows the app version on its toggle and the board version on di
 
   debug.onclick();  // on
   assert.equal(debug.textContent, 'dev');  // the release tag once deployed
-  assert.equal(p.button.textContent, 'disconnect v1.2.3');
+  assert.equal(p.button.textContent, 'disconnect · v1.2.3');
 
   await p.button.onclick();  // disconnected: no version
   assert.equal(p.button.textContent, 'connect');
   await p.button.onclick();
-  assert.equal(p.button.textContent, 'disconnect v1.2.3');
+  assert.equal(p.button.textContent, 'disconnect · v1.2.3');
 
   debug.onclick();  // off
   assert.equal(debug.textContent, 'debug');
