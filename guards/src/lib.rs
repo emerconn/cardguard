@@ -125,11 +125,8 @@ fn chip_leader(s: &mut Smooth) {
     s.tri(124.0, 122.0, 163.0, 122.0, 124.0, 169.5, INK);
 
     s.rect(69.0, 83.0, 102.0, 29.0, INK); // white gap to the shield's gold edge
-    s.rect(70.0, 84.0, 100.0, 27.0, GOLD);
-    for (dx, dy) in [(0.8, 0.8), (-0.8, 0.8), (0.8, -0.8), (-0.8, -0.8)] {
-        text(s, &HEADLINE, "POKER", 120.0 + dx, 99.0 + dy, INK); // black outline
-    }
-    text(s, &HEADLINE, "POKER", 120.0, 99.0, RED);
+    s.rect(71.0, 85.0, 98.0, 25.0, GOLD);
+    text(s, &HEADLINE, "POKER", 119.75, 97.5, RED);
 
     spade(s, 84.0, 66.0, INK, 1.0, 0.0);
     heart(s, 108.0, 66.0, RED, 1.0, 0.0);
