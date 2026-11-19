@@ -328,9 +328,9 @@ fn star(s: &mut Smooth, x: f32, y: f32, r: f32, c: u16) {
 }
 
 /// A 56 x 78 number card centred on (cx, cy), rotated by deg, with its rank in the top corner
-/// (corner = -1 left, +1 right) and the suit under it, both turned with the card.
+/// (corner = -1 left, +1 right) and, if given, a small suit under it, both turned with the card.
 #[allow(clippy::too_many_arguments)]
-fn pip_card(s: &mut Smooth, cx: f32, cy: f32, deg: f32, rank: u8, corner: f32, suit: Suit, col: u16) {
+fn pip_card(s: &mut Smooth, cx: f32, cy: f32, deg: f32, rank: u8, corner: f32, suit: Option<Suit>, col: u16) {
     let p = Place::new(cx, cy, 1.0, deg);
     s.rrect(cx, cy, 58.5, 80.5, 5.0, deg, CARD_EDGE);
     s.rrect(cx, cy, 56.0, 78.0, 4.0, deg, PAPER);
@@ -338,7 +338,9 @@ fn pip_card(s: &mut Smooth, cx: f32, cy: f32, deg: f32, rank: u8, corner: f32, s
     // centred under it.
     let x = corner * 16.5;
     s.glyph(CARD_RANK.font, CARD_RANK.scale, rank, p.x(x, -25.5), p.y(x, -25.5), deg, col);
-    suit(s, p.x(x, -5.0), p.y(x, -5.0), col, 0.95, deg);
+    if let Some(suit) = suit {
+        suit(s, p.x(x, -5.0), p.y(x, -5.0), col, 0.95, deg);
+    }
 }
 
 const BROWN: u16 = rgb565(178, 98, 46);
@@ -427,8 +429,8 @@ fn donk(s: &mut Smooth) {
     ring_text(s, &BAND_LONG, "SEVEN TWO OFFSUIT", 99.0, true, GOLD, 0.0);
     ring_stars(s, (&BAND, "I'M A DONK", 5.0), (&BAND_LONG, "SEVEN TWO OFFSUIT", 0.0), 99.0, 4, 6.5);
 
-    pip_card(s, 86.0, 124.0, -15.0, b'7', -1.0, spade, INK);
-    pip_card(s, 154.0, 124.0, 15.0, b'2', 1.0, diamond, RED);
+    pip_card(s, 86.0, 124.0, -15.0, b'7', -1.0, Some(spade), INK);
+    pip_card(s, 154.0, 124.0, 15.0, b'2', 1.0, Some(diamond), RED);
     donkey(s);
 }
 
@@ -469,10 +471,11 @@ fn bullets(s: &mut Smooth) {
         }
     }
 
-    pip_card(s, 101.0, 118.0, -12.0, b'A', -1.0, diamond, RED);
-    diamond(s, 101.0 + 4.0, 118.0 + 10.0, RED, 1.5, -12.0);
-    pip_card(s, 142.0, 122.0, 10.0, b'A', -1.0, spade, INK);
-    spade(s, 142.0 + 2.0, 122.0 + 10.0, INK, 1.9, 10.0);
+    // Aces: rank in the corner, one big suit in the middle of the card.
+    pip_card(s, 101.0, 118.0, -12.0, b'A', -1.0, None, RED);
+    diamond(s, 101.0, 118.0, RED, 1.5, -12.0);
+    pip_card(s, 142.0, 122.0, 10.0, b'A', -1.0, None, INK);
+    spade(s, 142.0, 122.0, INK, 1.9, 10.0);
 }
 
 /// A gold fish hook about 15 x 26 px times k: eye at the top, bend at the bottom curling round to a
