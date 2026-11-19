@@ -76,6 +76,7 @@ async def main():
     port = reset_and_read_serial()
     check("boots and draws guard 0", await wait_for(serial_lines, r"guard 0 drawn in \d+ ms", 10))
     port.write(b"l")  # button off, so a press can't change guards mid-test
+    check("button is off", await wait_for(serial_lines, r"^button: off$", 2))
     try:
         await checks()
     finally:
