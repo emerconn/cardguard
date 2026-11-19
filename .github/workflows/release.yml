@@ -26,7 +26,7 @@ jobs:
         run: |
           last=$(git describe --tags --abbrev=0 --match 'v[0-9]*.[0-9]*.[0-9]*' 2>/dev/null || true)
           if [ -z "$last" ]; then
-            next=v0.1.0  # first release, matching firmware/Cargo.toml
+            next=v0.1.0  # first release
           else
             log=$(git log --format='%s%n%b' "$last"..HEAD)
             IFS=. read -r major minor patch <<< "${last#v}"

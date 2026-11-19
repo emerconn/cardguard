@@ -48,7 +48,18 @@ use display::Display;
 
 extern crate alloc;
 
-esp_bootloader_esp_idf::esp_app_desc!();
+// As esp_app_desc!() but with the git tag as the version (build.rs).
+esp_bootloader_esp_idf::esp_app_desc!(
+    env!("CARDGUARD_VERSION"),
+    env!("CARGO_PKG_NAME"),
+    esp_bootloader_esp_idf::BUILD_TIME,
+    esp_bootloader_esp_idf::BUILD_DATE,
+    esp_bootloader_esp_idf::ESP_IDF_COMPATIBLE_VERSION,
+    esp_bootloader_esp_idf::MMU_PAGE_SIZE,
+    0,
+    u16::MAX,
+    esp_bootloader_esp_idf::SECURE_VERSION
+);
 
 // Pins from the vendor's Factory_samples_without_touch sketch (ESP32-2424S012). RST is not wired.
 // SCK 6, MOSI 7, DC 2, CS 10, backlight 3, BOOT button 9.
