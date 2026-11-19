@@ -10,9 +10,9 @@ use smooth::{fcos, fsin, rad, rgb565, Font, Smooth};
 
 pub type Scene = fn(&mut Smooth<'_>);
 
-pub static GUARDS: [Scene; 4] = [chip_leader, ducks, jack_king_off, donk];
+pub static GUARDS: [Scene; 5] = [chip_leader, ducks, jack_king_off, donk, bullets];
 /// Shown in the web app (sent over BLE), same order as GUARDS.
-pub static GUARD_NAMES: [&str; GUARDS.len()] = ["Chip Leader", "Ducks", "Jack King Off", "Donk"];
+pub static GUARD_NAMES: [&str; GUARDS.len()] = ["Chip Leader", "Ducks", "Jack King Off", "Donk", "Bullets"];
 
 const BLACK: u16 = 0;
 const GOLD_L: u16 = rgb565(251, 224, 138);
@@ -392,6 +392,43 @@ fn donk(s: &mut Smooth) {
     pip_card(s, 86.0, 124.0, -15.0, b'7', -1.0, spade, INK);
     pip_card(s, 154.0, 124.0, 15.0, b'2', 1.0, diamond, RED);
     donkey(s);
+}
+
+/// A gold revolver about 22 x 52 px pointing up, centred on (x, y); m = 1 puts the grip to the
+/// right, -1 to the left.
+fn revolver(s: &mut Smooth, x: f32, y: f32, m: f32) {
+    s.rect(x - 2.0, y - 26.0, 4.0, 22.0, GOLD); // barrel with a front sight
+    s.rect(x - 2.0 * m - 1.0, y - 29.0, 2.0, 3.5, GOLD);
+    s.rrect(x, y + 2.0, 10.0, 14.0, 2.5, 0.0, GOLD); // cylinder
+    s.rect(x - 3.0, y - 2.0, 6.0, 1.2, INK);
+    s.rect(x - 3.0, y + 3.0, 6.0, 1.2, INK);
+    s.tri(x + 3.0 * m, y - 4.0, x + 8.0 * m, y - 8.0, x + 5.0 * m, y + 1.0, GOLD); // hammer
+    s.poly(&[x - 4.0 * m, y + 7.0, x + 5.0 * m, y + 6.0, x + 13.0 * m, y + 22.0, x + 5.0 * m, y + 25.0], GOLD); // grip
+    s.circle(x - 5.0 * m, y + 13.0, 4.5, GOLD); // trigger guard
+    s.circle(x - 5.0 * m, y + 13.0, 2.8, INK);
+}
+
+fn bullets(s: &mut Smooth) {
+    s.fill(BLACK);
+    s.circle_grad(120.0, 120.0, 119.5, GOLD_L, GOLD_D, 113.0);
+    s.circle_grad(120.0, 120.0, 113.0, INK, INK, 84.0);
+    // Gold spokes split the band into the top and bottom text and the two gun panels.
+    for a in [-138.0f32, -42.0, 42.0, 138.0] {
+        let t = rad(a);
+        let (c, n) = (fcos(t), fsin(t));
+        let (dx, dy) = (-n * 1.2, c * 1.2);
+        s.poly(&[120.0 + 84.0 * c + dx, 120.0 + 84.0 * n + dy, 120.0 + 113.0 * c + dx, 120.0 + 113.0 * n + dy, 120.0 + 113.0 * c - dx, 120.0 + 113.0 * n - dy, 120.0 + 84.0 * c - dx, 120.0 + 84.0 * n - dy], GOLD);
+    }
+    s.circle_grad(120.0, 120.0, 84.0, GOLD_L, GOLD_D, 80.0);
+    ring_text(s, &BAND, "BULLETS", 98.0, false, GOLD, 0.0);
+    ring_text(s, &BAND, "PAIR OF ACES", 98.0, true, GOLD, 0.0);
+    revolver(s, 24.0, 116.0, -1.0);
+    revolver(s, 216.0, 116.0, 1.0);
+
+    pip_card(s, 101.0, 118.0, -12.0, b'A', -1.0, diamond, RED);
+    diamond(s, 101.0 + 4.0, 118.0 + 10.0, RED, 1.5, -12.0);
+    pip_card(s, 142.0, 122.0, 10.0, b'A', -1.0, spade, INK);
+    spade(s, 142.0 + 2.0, 122.0 + 10.0, INK, 1.9, 10.0);
 }
 
 /// Shown briefly when a client asks for a guard that doesn't exist; not a guard itself.
