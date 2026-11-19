@@ -107,7 +107,9 @@ async function connected() {
   const p = loadPage();
   const tap = p.button.onclick();
   assert.equal(p.button.textContent, 'connecting…');
+  assert.ok(p.button.disabled);  // no second picker from a double tap
   await tap;
+  assert.ok(!p.button.disabled);
   await p.tick();
   assert.equal(p.button.textContent, 'disconnect');
   assert.ok(p.live());
@@ -299,6 +301,7 @@ test('board log: a replay shows only unseen lines, a restarted board shows all',
 test('without Web Bluetooth the button says to use Bluefy', () => {
   const p = loadPage({ bluetooth: false });
   assert.equal(p.button.textContent, 'open this page in Bluefy');
+  assert.ok(p.button.disabled);
 });
 
 test('cancelling the picker goes back to connect', async () => {
@@ -306,6 +309,7 @@ test('cancelling the picker goes back to connect', async () => {
   p.board.cancelPicker = true;
   await p.button.onclick();
   assert.equal(p.button.textContent, 'connect');
+  assert.ok(!p.button.disabled);
 });
 
 test('disconnect clears the controls and does not reconnect', async () => {

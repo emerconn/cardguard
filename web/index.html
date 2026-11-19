@@ -172,6 +172,8 @@ function connectLabel() {
   connectBtn.textContent = !navigator.bluetooth ? 'open this page in Bluefy'
     : up ? (logBox.hidden ? 'disconnect' : `disconnect · ${boardVersion}`)
     : connecting ? 'connecting…' : 'connect';
+  // A tap while trying adds nothing (the retries run every 0.3 s), and a second picker would race the first.
+  connectBtn.disabled = !navigator.bluetooth || (connecting && !up);
 }
 function setConnecting(on) {
   connecting = on;
