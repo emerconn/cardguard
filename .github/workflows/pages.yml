@@ -1,11 +1,12 @@
 # Publishes web/ (the web app: plain HTML, no build step) to GitHub Pages, at the site root.
 # Tests run on the PR (tests.yml) before anything reaches main, so this only deploys.
+# Runs after Release on every push to main, so the page is stamped with the tag that commit just got.
 name: Pages
 
 on:
-  push:
-    branches: [main]
-    paths: [web/**, .github/workflows/pages.yml]
+  workflow_run:
+    workflows: [Release]
+    types: [completed]
   workflow_dispatch:
 
 permissions:
@@ -25,6 +26,13 @@ jobs:
       url: ${{ steps.deploy.outputs.page_url }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}  # the commit Release ran on
+          fetch-depth: 0  # tags, for git describe
+      # Same version string as the firmware's (firmware/build.rs).
+      - run: |
+          sed -i "s|<span id=\"appVer\">dev</span>|<span id=\"appVer\">$(git describe --tags --always)</span>|" web/index.html
+          ! grep -q '<span id="appVer">dev</span>' web/index.html  # fail if the markup changed and nothing was stamped
       - uses: actions/upload-pages-artifact@v5
         with:
           path: web

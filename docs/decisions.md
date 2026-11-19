@@ -51,3 +51,4 @@ Target: **~20 designs**, each a crisp digital (vector-style) design, not a photo
 | Looks | Best | Very good |
 | Draw time | 112-165 ms (was ~10 s before fixed-point rewrite) | Instant (~30 ms) |
 | Next | Further speedup possible (integer row maths), or pre-render its output on the PC | Kept on GitHub as a fallback |
+| 2026-11-19 | Web app shows its own version and the board's: the firmware serves `CARDGUARD_VERSION` as a read characteristic (`3059…`), and Pages stamps `git describe --tags` into the page at deploy, running after Release (`workflow_run`) on every push to main | Same version string on both sides, from the one tag; deploying after Release means the page gets the tag its commit just received, not the previous one. Firmware without the characteristic shows "unknown (older firmware)" |
