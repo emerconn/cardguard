@@ -3,7 +3,8 @@
 
 Each trial: connect over BLE, send 'z' on serial (board sleeps 5 s, wakes by timer), then time from
 waking to the first advert this PC hears and to a working connection again. Waking is taken as the
-"power: sleep" line + 5 s: USB serial drops the board's own "power: woke" line while it comes back from light sleep.
+"power: sleep" line + 5 s (the firmware times its wake from that line): USB serial drops the board's own "power: woke"
+line while it comes back from light sleep.
 
 Run: .venv/bin/python test/hardware/reconnect_time.py [TRIALS] [PORT]   (setup: see smoke.py)
 """
