@@ -85,6 +85,7 @@ async def main():
         guard_updates = []  # as text, so wait_for can match them
         await c.start_notify(SELECT, lambda _, data: guard_updates.append(str(data[0])))
         check("log subscribe is logged", await wait_for(ble_lines, r"subscribed to the log", 3))
+        check("boot lines replay on subscribe", await wait_for(ble_lines, r"^cardguard \S+$", 3), ble_lines)
 
         names = (await c.read_gatt_char(NAMES)).decode().split("\n")
         check("sends guard names", len(names) >= 1 and all(names), repr(names))

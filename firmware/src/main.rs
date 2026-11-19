@@ -9,14 +9,18 @@
 
 mod display;
 
-use core::fmt::Write as _;
+use core::{cell::RefCell, fmt::Write as _};
 use portable_atomic::{AtomicU8, AtomicU32, Ordering};
 
 use bt_hci::controller::ExternalController;
 use embassy_executor::Spawner;
 use esp_rtos::embassy::Executor;
 use embassy_futures::select::{Either, Either3, select, select3};
-use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex as Cs, channel::Channel, signal::Signal};
+use embassy_sync::{
+    blocking_mutex::{Mutex, raw::CriticalSectionRawMutex as Cs},
+    channel::Channel,
+    signal::Signal,
+};
 use embassy_time::{Duration, Instant, Timer};
 use embedded_io_async::Read as _;
 use esp_backtrace as _;
@@ -41,7 +45,7 @@ use esp_hal::{
 use esp_radio::ble::controller::BleConnector;
 use esp_storage::FlashStorage;
 use guards::{GUARD_NAMES, GUARDS};
-use heapless::{String, Vec};
+use heapless::{Deque, String, Vec};
 use static_cell::StaticCell;
 use trouble_host::prelude::*;
 
@@ -70,13 +74,21 @@ esp_bootloader_esp_idf::esp_app_desc!(
 // ---- Log: USB serial, and BLE notifications to the web app's log panel ----
 
 type Line = String<160>;
-// shortcut: lines before a client subscribes (boot, heap) only reach USB serial; keep a backlog if that matters.
 static LOG: Channel<Cs, Line, 8> = Channel::new();
+/// The last lines, replayed to a client when it subscribes: boot lines (version, heap) come before any.
+static BACKLOG: Mutex<Cs, RefCell<Deque<Line, 8>>> = Mutex::new(RefCell::new(Deque::new()));
 
 pub fn log_line(args: core::fmt::Arguments) {
     let mut s = Line::new();
     let _ = s.write_fmt(args);
     esp_println::println!("{s}");
+    BACKLOG.lock(|b| {
+        let mut b = b.borrow_mut();
+        if b.is_full() {
+            b.pop_front();
+        }
+        let _ = b.push_back(s.clone());
+    });
     let _ = LOG.try_send(s); // full: BLE is behind, the line still went to serial
 }
 #[macro_export]
@@ -462,7 +474,7 @@ async fn connection(conn: GattConnection<'static, 'static, DefaultPacketPool>, s
                 break;
             }
             GattConnectionEvent::Gatt { event } => {
-                let mut bright = None;
+                let (mut bright, mut subscribed) = (None, false);
                 if let GattEvent::Write(e) = &event {
                     let h = e.handle();
                     e.with_data(|_, v| {
@@ -475,6 +487,7 @@ async fn connection(conn: GattConnection<'static, 'static, DefaultPacketPool>, s
                             bright = Some(v[0].clamp(10, 100));
                         } else if Some(h) == svc.log.cccd_handle {
                             let on = v.first().is_some_and(|b| b & 1 != 0);
+                            subscribed = on;
                             log!("ble: {addr:?} {} the log", if on { "subscribed to" } else { "unsubscribed from" });
                         }
                     });
@@ -486,6 +499,12 @@ async fn connection(conn: GattConnection<'static, 'static, DefaultPacketPool>, s
                 if let Some(b) = bright {
                     let _ = server.set(&svc.bright, &b); // reads return the applied value
                     let _ = CMD.try_send(Cmd::Bright(b));
+                }
+                if subscribed {
+                    // Only to this client; may repeat lines a reconnecting client already saw.
+                    for line in BACKLOG.lock(|b| b.borrow().clone()) {
+                        let _ = svc.log.notify_raw(&conn, line.as_bytes(), false).await;
+                    }
                 }
             }
             _ => {}
