@@ -347,7 +347,8 @@ const CHANNELS: usize = 2 * CONNS;
 type Ctl = ExternalController<BleConnector<'static>, 4>;
 type Stk = Stack<'static, Ctl, DefaultPacketPool>;
 
-#[gatt_server]
+// GAP (name, appearance: 5) + GATT with Service Changed (4); see gap_and_gatt.
+#[gatt_server(attribute_table_size = 9 + GuardService::ATTRIBUTE_COUNT)]
 struct Server {
     svc: GuardService,
 }
@@ -372,6 +373,24 @@ struct GuardService {
 }
 const _: () = assert!(env!("CARDGUARD_VERSION").len() <= 48, "version string won't fit the version characteristic");
 
+type Table = AttributeTable<'static, embassy_sync::blocking_mutex::raw::NoopRawMutex, _ATTRIBUTE_TABLE_SIZE>;
+
+/// trouble's GapConfig leaves the GATT service empty. Without Service Changed, iOS caches the
+/// characteristic list forever, so a firmware that adds one stays invisible until Bluetooth is toggled;
+/// with it, a phone that isn't bonded must rediscover on every connection (Core spec Vol 3 Part G 2.5.2).
+fn gap_and_gatt() -> Table {
+    let mut table = Table::new();
+    let mut gap = table.add_service(Service::new(service::GAP));
+    gap.add_characteristic_ro(characteristic::DEVICE_NAME, "cardguard");
+    gap.add_characteristic_ro(characteristic::APPEARANCE, &appearance::UNKNOWN);
+    gap.build();
+    let mut gatt = table.add_service(Service::new(service::GATT));
+    // Affected handle range: all of them. Never indicated: the table only changes with a reflash.
+    gatt.add_characteristic_small(characteristic::SERVICE_CHANGED, [CharacteristicProp::Indicate], [0x01u8, 0x00, 0xff, 0xff]).build();
+    gatt.build();
+    table
+}
+
 const BLE_STACK: usize = 12 * 1024; // from the heap
 
 /// The BLE thread: its own executor, so the scheduler can run it ahead of the main thread.
@@ -386,9 +405,7 @@ extern "C" fn ble_thread(args: *mut c_void) {
 #[embassy_executor::task]
 async fn ble(connector: BleConnector<'static>, current: u8, brightness: u8, spawner: Spawner) {
     static SERVER: StaticCell<Server> = StaticCell::new();
-    let server = SERVER.init(
-        Server::new_with_config(GapConfig::Peripheral(PeripheralConfig { name: "cardguard", appearance: &appearance::UNKNOWN })).unwrap(),
-    );
+    let server = SERVER.init(Server::new(gap_and_gatt()));
     let mut names: Vec<u8, 256> = Vec::new();
     for (i, n) in GUARD_NAMES.iter().enumerate() {
         if i > 0 {
