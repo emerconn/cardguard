@@ -290,7 +290,15 @@ async fn main(spawner: Spawner) -> ! {
                 log!("ble: no guard {n} (valid 0-{}), keeping guard {current}", GUARDS.len() - 1);
                 display.draw(&|s| guards::no_guard(s, n)).await;
                 // A press ends it early; the loop then takes that press as usual (next guard, or sleep if held).
-                if let Either::First(()) = select(Timer::after_secs(3), btn.wait_for_low()).await {
+                // With the button off the loop would ignore it and leave this screen up, so only time it out.
+                let press = async {
+                    if BUTTON_OFF.load(Ordering::Relaxed) {
+                        core::future::pending().await
+                    } else {
+                        btn.wait_for_low().await
+                    }
+                };
+                if let Either::First(()) = select(Timer::after_secs(3), press).await {
                     show(&mut display, current).await;
                 }
             }
