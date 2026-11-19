@@ -2,7 +2,7 @@
 """Hardware smoke test: run after flashing, with the board on USB and no serial monitor open.
 
 Resets the board, then checks over USB serial and Bluetooth that it boots, advertises, sends its
-guard names, draws a valid pick, rejects an invalid one, takes a brightness write, and streams log
+guard names and firmware version, draws a valid pick, rejects an invalid one, takes a brightness write, and streams log
 lines over BLE. Leaves the board on guard 0 at its saved brightness.
 
 Setup once:  python3 -m venv .venv && .venv/bin/pip install bleak pyserial
@@ -18,6 +18,7 @@ SELECT = "6eeb6fbb-9458-47d6-9379-e73cab7dfa04"
 NAMES = "ab3ba50e-45cb-4145-ae7e-3066f7e872a8"
 BRIGHT = "38c7816a-72f6-40eb-b1ab-b01bb0136afc"
 LOG = "7c0bd792-ba8a-4791-be95-3c354c4c2fd2"
+VERSION = "30598302-24ed-4ff4-8c09-c9091182cab0"
 
 serial_lines, ble_lines = [], []
 failures = []
@@ -90,6 +91,8 @@ async def main():
 
         names = (await c.read_gatt_char(NAMES)).decode().split("\n")
         check("sends guard names", len(names) >= 1 and all(names), repr(names))
+        version = (await c.read_gatt_char(VERSION)).decode()
+        check("sends its firmware version", re.fullmatch(r"v\d+\.\d+\.\d+(-\d+-g[0-9a-f]+)?|[0-9a-f]{7,}", version), repr(version))
 
         last = len(names) - 1
         serial_lines.clear(), ble_lines.clear()

@@ -59,6 +59,7 @@ function loadPage() {
     addEventListener(t, f) { this.listeners.push(f); }, async startNotifications() {},
     async readValue() {
       if (uuid.startsWith('ab3b')) return new TextEncoder().encode('A\nB\nC\nD');
+      if (uuid.startsWith('3059')) return new TextEncoder().encode('v1.2.3');
       return { getUint8: () => (uuid.startsWith('6eeb') ? board.current : 60) };
     },
     async writeValue(v) {
@@ -109,6 +110,11 @@ test('connect shows disconnect and live guard buttons', async () => {
   const p = await connected();
   assert.equal(p.board.pickerOpened, 1);
   assert.equal(p.guards().length, 4);
+});
+
+test('connect shows the board\'s firmware version', async () => {
+  const p = await connected();
+  assert.equal(p.els.boardVer.textContent, 'v1.2.3');
 });
 
 test('connect highlights the guard the board is showing', async () => {

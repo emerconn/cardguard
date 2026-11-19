@@ -366,7 +366,11 @@ struct GuardService {
     /// Log lines, as notifications.
     #[characteristic(uuid = "7c0bd792-ba8a-4791-be95-3c354c4c2fd2", notify)]
     log: Vec<u8, 160>,
+    /// Firmware version (git tag, build.rs), so the web app can show what the board runs.
+    #[characteristic(uuid = "30598302-24ed-4ff4-8c09-c9091182cab0", read)]
+    version: Vec<u8, 48>,
 }
+const _: () = assert!(env!("CARDGUARD_VERSION").len() <= 48, "version string won't fit the version characteristic");
 
 const BLE_STACK: usize = 12 * 1024; // from the heap
 
@@ -395,6 +399,7 @@ async fn ble(connector: BleConnector<'static>, current: u8, brightness: u8, spaw
     server.set(&server.svc.names, &names).unwrap();
     server.set(&server.svc.select, &Vec::from_slice(&[current]).unwrap()).unwrap();
     server.set(&server.svc.bright, &brightness).unwrap();
+    server.set(&server.svc.version, &Vec::from_slice(env!("CARDGUARD_VERSION").as_bytes()).unwrap()).unwrap();
 
     static RESOURCES: StaticCell<HostResources<Ctl, DefaultPacketPool, CONNS, CHANNELS>> = StaticCell::new();
     static STACK: StaticCell<Stk> = StaticCell::new();
