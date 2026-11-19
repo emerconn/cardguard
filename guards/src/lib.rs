@@ -557,7 +557,7 @@ fn mini_card(s: &mut Smooth, cx: f32, cy: f32, deg: f32, rank: u8, suit: Suit, c
     s.rrect(cx, cy, 30.5, 42.5, 3.0, deg, CARD_EDGE);
     s.rrect(cx, cy, 28.0, 40.0, 2.5, deg, PAPER);
     s.glyph(CARD_INDEX.font, CARD_INDEX.scale, rank, p.x(-7.0, -11.0), p.y(-7.0, -11.0), deg, col);
-    suit(s, p.x(3.0, 7.0), p.y(3.0, 7.0), col, 0.6, deg);
+    suit(s, p.x(0.0, 4.0), p.y(0.0, 4.0), col, 1.0, deg); // centred, just below the rank
 }
 
 /// Gold-relief woman after assets/german_virgin.png: head bowed left over the cards, long hair swept
