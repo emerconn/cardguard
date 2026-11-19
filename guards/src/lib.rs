@@ -10,9 +10,9 @@ use smooth::{fcos, fsin, rad, rgb565, Font, Smooth};
 
 pub type Scene = fn(&mut Smooth<'_>);
 
-pub static GUARDS: [Scene; 5] = [chip_leader, ducks, jack_king_off, donk, bullets];
+pub static GUARDS: [Scene; 6] = [chip_leader, ducks, jack_king_off, donk, bullets, gone_fishing];
 /// Shown in the web app (sent over BLE), same order as GUARDS.
-pub static GUARD_NAMES: [&str; GUARDS.len()] = ["Chip Leader", "Ducks", "Jack King Off", "Donk", "Bullets"];
+pub static GUARD_NAMES: [&str; GUARDS.len()] = ["Chip Leader", "Ducks", "Jack King Off", "Donk", "Bullets", "Gone Fishing"];
 
 const BLACK: u16 = 0;
 const GOLD_L: u16 = rgb565(251, 224, 138);
@@ -174,12 +174,12 @@ fn duck(s: &mut Smooth, x: f32, y: f32, k: f32) {
     s.circle(x - 11.0 * k, y - 14.0 * k, 1.5 * k, INK);
 }
 
-/// Shared frame: gold rim, cream band with suits down each side, black banners carrying top and
+/// Shared frame: gold rim, band of colour `band` with suits down each side, black banners carrying top and
 /// bottom text, gold rope ring, black centre (radius 73) for the design's own art.
-fn banner_frame(s: &mut Smooth, top_style: &TextStyle, top: &str, bottom_style: &TextStyle, bottom: &str) {
+fn banner_frame(s: &mut Smooth, band: u16, top_style: &TextStyle, top: &str, bottom_style: &TextStyle, bottom: &str) {
     s.fill(BLACK);
     s.circle_grad(120.0, 120.0, 119.5, GOLD_L, GOLD_D, 112.0);
-    s.circle_grad(120.0, 120.0, 112.0, CREAM, CREAM, 84.0);
+    s.circle_grad(120.0, 120.0, 112.0, band, band, 84.0);
 
     // Black banners with gold edges across the top and bottom of the band.
     for b in 0..2 {
@@ -216,7 +216,7 @@ fn banner_frame(s: &mut Smooth, top_style: &TextStyle, top: &str, bottom_style: 
 }
 
 fn ducks(s: &mut Smooth) {
-    banner_frame(s, &BAND, "THE DUCKS", &BAND, "QUACK QUACK");
+    banner_frame(s, CREAM, &BAND, "THE DUCKS", &BAND, "QUACK QUACK");
     duck(s, 90.0, 107.5, 1.15);
     duck(s, 154.0, 107.5, 1.15);
     text(s, &LABEL, "POCKET 2s", 120.5, 149.5, GOLD);
@@ -272,7 +272,7 @@ fn court_card(s: &mut Smooth, cx: f32, cy: f32, deg: f32, rank: u8, suit: Suit, 
 }
 
 fn jack_king_off(s: &mut Smooth) {
-    banner_frame(s, &BAND, "I LOVE", &BAND_LONG, "JACK KING OFF");
+    banner_frame(s, CREAM, &BAND, "I LOVE", &BAND_LONG, "JACK KING OFF");
     court_card(s, 96.0, 122.0, -10.0, b'J', spade, INK);
     court_card(s, 144.0, 118.0, 8.0, b'K', heart, RED);
 }
@@ -442,6 +442,33 @@ fn bullets(s: &mut Smooth) {
     diamond(s, 101.0 + 4.0, 118.0 + 10.0, RED, 1.5, -12.0);
     pip_card(s, 142.0, 122.0, 10.0, b'A', -1.0, spade, INK);
     spade(s, 142.0 + 2.0, 122.0 + 10.0, INK, 1.9, 10.0);
+}
+
+/// A gold fish hook about 15 x 26 px times k: eye at the top, bend at the bottom curling round to a
+/// barbed point on the left (m = 1) or right (m = -1), rotated by deg about the shank's middle (x, y).
+fn hook(s: &mut Smooth, x: f32, y: f32, k: f32, m: f32, deg: f32) {
+    let p = Place::new(x, y, k, deg);
+    let w = 1.2; // half the wire thickness
+    let bar = |s: &mut Smooth, x0: f32, y0: f32, x1: f32, y1: f32| {
+        s.poly(&[p.x(x0 - w, y0), p.y(x0 - w, y0), p.x(x0 + w, y0), p.y(x0 + w, y0), p.x(x1 + w, y1), p.y(x1 + w, y1), p.x(x1 - w, y1), p.y(x1 - w, y1)], GOLD);
+    };
+    bar(s, 0.0, -14.0, 0.0, 4.0); // shank
+    bar(s, -12.0 * m, 4.0, -12.0 * m, -2.0); // point
+    for a in [0.0, 90.0] {
+        s.arc(p.x(-6.0 * m, 4.0), p.y(-6.0 * m, 4.0), 6.0 * k, 2.0 * w * k, deg + a, deg + a + 90.0, GOLD); // bend
+    }
+    s.tri(p.x(-12.0 * m, -6.0), p.y(-12.0 * m, -6.0), p.x(-14.0 * m, 0.0), p.y(-14.0 * m, 0.0), p.x(-9.0 * m, 1.0), p.y(-9.0 * m, 1.0), GOLD); // barb
+    s.circle(p.x(0.0, -15.5), p.y(0.0, -15.5), 2.8 * k, GOLD); // eye
+    s.circle(p.x(0.0, -15.5), p.y(0.0, -15.5), 1.3 * k, INK);
+}
+
+fn gone_fishing(s: &mut Smooth) {
+    banner_frame(s, GOLD, &BAND, "GONE FISHING", &BAND, "PAIR OF JACKS");
+    // Two hooks crossed at the shanks, bends curling up either side.
+    hook(s, 110.0, 69.0, 1.35, 1.0, 50.0);
+    hook(s, 130.0, 69.0, 1.35, -1.0, -50.0);
+    court_card(s, 96.0, 131.0, -10.0, b'J', heart, RED);
+    court_card(s, 144.0, 129.0, 8.0, b'J', diamond, RED);
 }
 
 /// Shown briefly when a client asks for a guard that doesn't exist; not a guard itself.
