@@ -395,16 +395,16 @@ fn donk(s: &mut Smooth) {
 }
 
 /// A gold revolver about 26 x 50 px pointing up, centred on (x, y); m = 1 puts the grip and
-/// hammer to the right and the trigger guard to the left, -1 mirrors it.
+/// trigger guard to the right and the barrel and hammer to the left, -1 mirrors it.
 fn revolver(s: &mut Smooth, x: f32, y: f32, m: f32) {
     s.rect(x - 3.0 * m - 2.0, y - 26.0, 4.0, 26.0, GOLD); // barrel, flush with the frame edge opposite the grip
     s.rrect(x, y + 2.0, 10.0, 14.0, 2.5, 0.0, GOLD); // cylinder
     s.rect(x - 3.0, y - 2.0, 6.0, 1.2, INK);
     s.rect(x - 3.0, y + 3.0, 6.0, 1.2, INK);
-    s.tri(x + 4.0 * m, y + 4.0, x + 4.0 * m, y + 10.0, x + 10.0 * m, y + 12.0, GOLD); // hammer
+    s.tri(x - 4.0 * m, y - 3.0, x - 4.0 * m, y + 5.0, x - 10.0 * m, y - 2.0, GOLD); // hammer spur
     s.poly(&[x - 5.0 * m, y + 8.0, x + 3.0 * m, y + 8.0, x + 10.0 * m, y + 25.0, x + 2.0 * m, y + 27.0], GOLD); // grip
-    s.circle(x - 6.0 * m, y + 7.0, 4.5, GOLD); // trigger guard
-    s.circle(x - 6.0 * m, y + 7.0, 2.8, INK);
+    s.circle(x + 8.0 * m, y + 4.0, 4.5, GOLD); // trigger guard, in front of the grip
+    s.circle(x + 8.0 * m, y + 4.0, 2.8, INK);
 }
 
 fn bullets(s: &mut Smooth) {
