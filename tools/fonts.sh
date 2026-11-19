@@ -9,5 +9,5 @@ F=/usr/share/fonts/liberation
   echo 'use crate::smooth::{g, Font};'
   echo
   python3 tools/ttf2gfx.py $F/LiberationSans-Bold.ttf 72 TITLE " '-0123456789ABCDEFGHIJKLMNOPQRSTUVW"
-  python3 tools/ttf2gfx.py $F/LiberationSerif-Bold.ttf 108 POKER " '2ACDEFGHIJKLMNOPRTVs"
+  python3 tools/ttf2gfx.py $F/LiberationSerif-Bold.ttf 108 POKER " 2CEKOPRTs"
 } > guards/src/fonts.rs
