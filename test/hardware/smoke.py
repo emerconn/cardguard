@@ -3,7 +3,8 @@
 
 Resets the board, then checks over USB serial and Bluetooth that it boots, advertises, sends its
 guard names and firmware version, draws a valid pick, rejects an invalid one, takes a brightness write, and streams log
-lines over BLE. Leaves the board on guard 0 at its saved brightness.
+lines over BLE. The button is off during the test (serial 'l', back on with 'u' at the end; a reset also clears it).
+Leaves the board on guard 0 at its saved brightness.
 
 Setup once:  python3 -m venv .venv && .venv/bin/pip install bleak pyserial
 Run:         (cd firmware && cargo run --release) && .venv/bin/python test/hardware/smoke.py [PORT]
@@ -31,7 +32,7 @@ def check(what, ok, detail=""):
 
 
 def reset_and_read_serial():
-    """Resets the board (USB-Serial-JTAG, as tools/drawtime.py) and keeps reading lines into serial_lines."""
+    """Resets the board (USB-Serial-JTAG, as tools/drawtime.py), keeps reading lines into serial_lines, returns the port."""
     p = serial.Serial(PORT, 115200)
     p.dtr, p.rts = False, True
     time.sleep(0.1)
@@ -57,6 +58,7 @@ def reset_and_read_serial():
                 serial_lines.append(line.decode(errors="replace").strip())
 
     threading.Thread(target=pump, daemon=True).start()
+    return p
 
 
 async def wait_for(lines, pattern, timeout):
@@ -71,8 +73,17 @@ async def wait_for(lines, pattern, timeout):
 
 
 async def main():
-    reset_and_read_serial()
+    port = reset_and_read_serial()
     check("boots and draws guard 0", await wait_for(serial_lines, r"guard 0 drawn in \d+ ms", 10))
+    port.write(b"l")  # button off, so a press can't change guards mid-test
+    try:
+        await checks()
+    finally:
+        port.write(b"u")
+        time.sleep(0.1)  # let the byte go out before the process exits
+
+
+async def checks():
     check("prints its version", await wait_for(serial_lines, r"^cardguard \S+$", 5))
     heap = await wait_for(serial_lines, r"heap: (\d+) KB free", 5)
     check("prints free heap", heap)

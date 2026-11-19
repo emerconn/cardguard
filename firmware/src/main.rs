@@ -10,7 +10,7 @@
 mod display;
 
 use core::{cell::RefCell, fmt::Write as _};
-use portable_atomic::{AtomicU8, AtomicU16, AtomicU32, Ordering};
+use portable_atomic::{AtomicBool, AtomicU8, AtomicU16, AtomicU32, Ordering};
 
 use bt_hci::controller::ExternalController;
 use embassy_executor::Spawner;
@@ -125,6 +125,9 @@ enum Adv {
 }
 static ADV: Signal<Cs, Adv> = Signal::new();
 static OPEN: AtomicU8 = AtomicU8::new(0); // open BLE connections
+/// Serial 'l' sets it, 'u' or a reset clears it: test/hardware/smoke.py turns the button off so a press
+/// can't change guards (or flood the log backlog) mid-test.
+static BUTTON_OFF: AtomicBool = AtomicBool::new(false);
 
 /// Guard on screen when the board went to sleep, tagged; survives the restart that wakes it.
 #[esp_hal::ram(unstable(rtc_fast, persistent))]
@@ -250,6 +253,12 @@ async fn main(spawner: Spawner) -> ! {
             }
         };
         let cmd = match select3(btn.wait_for_low(), CMD.receive(), save).await {
+            // Ignored without a log line: it would push older lines out of the backlog the test checks.
+            Either3::First(()) if BUTTON_OFF.load(Ordering::Relaxed) => {
+                btn.wait_for_high().await;
+                Timer::after_millis(50).await; // debounce
+                continue;
+            }
             // Short press: next design (on release). Hold 2 s: sleep.
             Either3::First(()) => match select(btn.wait_for_high(), Timer::after_secs(2)).await {
                 Either::First(()) => {
@@ -281,7 +290,15 @@ async fn main(spawner: Spawner) -> ! {
                 log!("ble: no guard {n} (valid 0-{}), keeping guard {current}", GUARDS.len() - 1);
                 display.draw(&|s| guards::no_guard(s, n)).await;
                 // A press ends it early; the loop then takes that press as usual (next guard, or sleep if held).
-                if let Either::First(()) = select(Timer::after_secs(3), btn.wait_for_low()).await {
+                // With the button off the loop would ignore it and leave this screen up, so only time it out.
+                let press = async {
+                    if BUTTON_OFF.load(Ordering::Relaxed) {
+                        core::future::pending().await
+                    } else {
+                        btn.wait_for_low().await
+                    }
+                };
+                if let Either::First(()) = select(Timer::after_secs(3), press).await {
                     show(&mut display, current).await;
                 }
             }
@@ -327,7 +344,8 @@ async fn show(display: &mut Display, i: u8) {
     SHOWN.signal(i);
 }
 
-/// 'n' steps to the next guard (tools/drawtime.py); 'z' sleeps 5 s and wakes by timer (reconnect_time.py).
+/// 'n' steps to the next guard (tools/drawtime.py); 'z' sleeps 5 s and wakes by timer (reconnect_time.py);
+/// 'l' turns the button off and 'u' back on (smoke.py).
 #[embassy_executor::task]
 async fn serial(mut rx: UsbSerialJtagRx<'static, Async>) {
     let mut b = [0u8; 16];
@@ -337,6 +355,8 @@ async fn serial(mut rx: UsbSerialJtagRx<'static, Async>) {
             match c {
                 b'n' => CMD.send(Cmd::Next).await,
                 b'z' => CMD.send(Cmd::Sleep(5)).await,
+                b'l' => BUTTON_OFF.store(true, Ordering::Relaxed),
+                b'u' => BUTTON_OFF.store(false, Ordering::Relaxed),
                 _ => {}
             }
         }
