@@ -66,6 +66,7 @@ function loadPage({ bluetooth = true } = {}) {
       if (!device.gatt.connected) throw new Error('GATT not connected');
       // Board just fell asleep, link not dropped yet: the write hangs until the drop fails it.
       if (board.asleep) return new Promise((_, no) => board.pending.push(no));
+      if (board.writeFails) throw new Error('GATT operation failed');  // link up, write refused
       board.writes.push(v[0]);
       if (uuid.startsWith('6eeb')) board.current = v[0];
     },
@@ -197,6 +198,17 @@ test('a brightness dragged just as the board falls asleep snaps back to the boar
   assert.ok(p.frozen());
   assert.equal(p.els.bright.value, 60);
   assert.equal(p.els.pct.textContent, '60%');
+});
+
+test('a brightness write that fails on a live link snaps the slider back', async () => {
+  const p = await connected();  // board brightness 60
+  p.board.writeFails = true;
+  p.els.bright.value = '30';
+  await p.els.bright.oninput();
+  assert.ok(p.live());  // still connected
+  assert.equal(p.els.bright.value, 60);
+  assert.equal(p.els.pct.textContent, '60%');
+  assert.ok(p.logged(/brightness failed/));
 });
 
 test('frozen controls send nothing', async () => {

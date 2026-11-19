@@ -308,7 +308,8 @@ slider.oninput = async () => {
     }
   } catch (e) {
     wanted = null;
-    failed('brightness', e);  // a drop puts the slider back to the board's level
+    failed('brightness', e);
+    showBright(boardBright);  // the slider never shows a level the board didn't take
   } finally {
     sending = false;
   }
