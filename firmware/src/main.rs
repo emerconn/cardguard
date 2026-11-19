@@ -10,7 +10,7 @@
 mod display;
 
 use core::{cell::RefCell, fmt::Write as _};
-use portable_atomic::{AtomicU8, AtomicU32, Ordering};
+use portable_atomic::{AtomicU8, AtomicU16, AtomicU32, Ordering};
 
 use bt_hci::controller::ExternalController;
 use embassy_executor::Spawner;
@@ -28,6 +28,7 @@ use esp_hal::{
     Async,
     clock::CpuClock,
     gpio::{Event, Input, InputConfig, Level, Output, OutputConfig, Pull, WakeupConfig},
+    rng::Rng,
     ledc::{
         LSGlobalClkSource, Ledc, LowSpeed,
         channel::{self, ChannelHW, ChannelIFace},
@@ -78,18 +79,27 @@ static LOG: Channel<Cs, Line, 8> = Channel::new();
 /// The last lines, replayed to a client when it subscribes: boot lines (version, heap) come before any.
 static BACKLOG: Mutex<Cs, RefCell<Deque<Line, 8>>> = Mutex::new(RefCell::new(Deque::new()));
 
+/// Random per boot, so the web app can tell a restarted board's line numbers from the old ones.
+static BOOT: AtomicU16 = AtomicU16::new(0);
+static SEQ: AtomicU32 = AtomicU32::new(0);
+
+/// Serial gets the plain line; BLE gets it as "<boot>.<n> line", so a client that sees the backlog again
+/// on a reconnect can skip the lines it already showed.
 pub fn log_line(args: core::fmt::Arguments) {
-    let mut s = Line::new();
-    let _ = s.write_fmt(args);
-    esp_println::println!("{s}");
     BACKLOG.lock(|b| {
+        let mut s = Line::new();
+        let n = SEQ.fetch_add(1, Ordering::Relaxed) + 1;
+        let _ = write!(s, "{:04x}.{n} ", BOOT.load(Ordering::Relaxed));
+        let start = s.len();
+        let _ = s.write_fmt(args);
+        esp_println::println!("{}", &s[start..]);
         let mut b = b.borrow_mut();
         if b.is_full() {
             b.pop_front();
         }
         let _ = b.push_back(s.clone());
+        let _ = LOG.try_send(s); // full: BLE is behind, the line still went to serial
     });
-    let _ = LOG.try_send(s); // full: BLE is behind, the line still went to serial
 }
 #[macro_export]
 macro_rules! log {
@@ -206,6 +216,7 @@ async fn main(spawner: Spawner) -> ! {
     // (CPU-bound, up to ~80 ms per strip) instead of waiting for it. Not an interrupt executor: the
     // radio driver blocks on its own threads, which can't run under an interrupt.
     let connector = BleConnector::new(p.BT, Default::default()).unwrap();
+    BOOT.store(Rng::new().random() as u16, Ordering::Relaxed); // radio on: the RNG has real entropy now; nothing logged before
     let args = Box::into_raw(Box::new((connector, current, brightness))).cast();
     // SAFETY: the thread takes ownership of args (Send) and never ends.
     unsafe { esp_radio_rtos_driver::task_create("ble", ble_thread, args, 1, None, BLE_STACK) };

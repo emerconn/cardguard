@@ -85,7 +85,8 @@ async def main():
         guard_updates = []  # as text, so wait_for can match them
         await c.start_notify(SELECT, lambda _, data: guard_updates.append(str(data[0])))
         check("log subscribe is logged", await wait_for(ble_lines, r"subscribed to the log", 3))
-        check("boot lines replay on subscribe", await wait_for(ble_lines, r"^cardguard \S+$", 3), ble_lines)
+        replayed = await wait_for(ble_lines, r"^([0-9a-f]{4}\.\d+) cardguard \S+$", 3)  # "<boot>.<n> line"
+        check("boot lines replay on subscribe, numbered", replayed, ble_lines)
 
         names = (await c.read_gatt_char(NAMES)).decode().split("\n")
         check("sends guard names", len(names) >= 1 and all(names), repr(names))
@@ -113,6 +114,15 @@ async def main():
 
         await c.write_gatt_char(SELECT, bytes([0]), response=True)
         await wait_for(serial_lines, r"guard 0 drawn", 3)
+        await wait_for(ble_lines, r"guard 0 drawn", 3)
+        seen = ble_lines[-1]
+
+    # Same numbers on a reconnect, so the web app can skip lines it already showed.
+    async with BleakClient(device) as c:
+        again = []
+        await c.start_notify(LOG, lambda _, data: again.append(data.decode(errors="replace")))
+        same = await wait_for(again, rf"^{re.escape(seen)}$", 3)
+        check("a reconnect replays a seen line with its number", same, (seen, again))
 
 
 asyncio.run(main())
