@@ -90,6 +90,7 @@ function boardLog(line) {
   logSeen.add(m[2]);
   if (logSeen.size > 1000) logSeen.delete(logSeen.values().next().value);  // oldest first
   addLog(m[3]);
+  if (m[3] === 'power: sleep') leaving = true;  // put to sleep on purpose: the drop that follows doesn't retry
 }
 
 const list = document.getElementById('guards');

@@ -162,7 +162,7 @@ test('BOOT pressed on the device moves the highlight', async () => {
   assert.deepEqual(p.highlighted(), [0]);
 });
 
-test('board drops (sleep, reset): controls freeze, then it reconnects by itself', async () => {
+test('board drops (out of range, reset): controls freeze, then it reconnects by itself', async () => {
   const p = await connected();
   p.board.reachable = false;  // asleep
   p.boardDrops();
@@ -287,6 +287,17 @@ test('tapping a stale disconnect never opens the picker', async () => {
   assert.equal(p.button.textContent, 'connect');
   assert.equal(p.guards().length, 0);
   assert.ok(p.logged(/disconnected/));
+});
+
+test('board put to sleep: the drop shows connect and doesn\'t retry', async () => {
+  const p = await connected();
+  p.board.log('a1f0.9 power: sleep');
+  p.boardDrops();  // the board disconnects just before it sleeps
+  assert.equal(p.button.textContent, 'connect');
+  assert.ok(p.logged(/web: disconnected/));
+  await p.tick(20);  // the board is still reachable here, so a retry would reconnect
+  assert.equal(p.button.textContent, 'connect');
+  assert.equal(p.device.gatt.connected, false);
 });
 
 test('board log: a replay shows only unseen lines, a restarted board shows all', async () => {
