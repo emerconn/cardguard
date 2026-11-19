@@ -395,16 +395,16 @@ fn donk(s: &mut Smooth) {
 }
 
 /// A gold revolver about 26 x 50 px pointing up, centred on (x, y); m = 1 puts the grip and
-/// trigger guard to the right and the hammer to the left, -1 mirrors it.
+/// hammer to the right and the trigger guard to the left, -1 mirrors it.
 fn revolver(s: &mut Smooth, x: f32, y: f32, m: f32) {
-    s.rect(x - 2.0, y - 26.0, 4.0, 22.0, GOLD); // barrel
+    s.rect(x - 3.0 * m - 2.0, y - 26.0, 4.0, 26.0, GOLD); // barrel, flush with the frame edge opposite the grip
     s.rrect(x, y + 2.0, 10.0, 14.0, 2.5, 0.0, GOLD); // cylinder
     s.rect(x - 3.0, y - 2.0, 6.0, 1.2, INK);
     s.rect(x - 3.0, y + 3.0, 6.0, 1.2, INK);
-    s.tri(x - 4.0 * m, y + 4.0, x - 4.0 * m, y + 10.0, x - 10.0 * m, y + 12.0, GOLD); // hammer
+    s.tri(x + 4.0 * m, y + 4.0, x + 4.0 * m, y + 10.0, x + 10.0 * m, y + 12.0, GOLD); // hammer
     s.poly(&[x - 5.0 * m, y + 8.0, x + 3.0 * m, y + 8.0, x + 10.0 * m, y + 25.0, x + 2.0 * m, y + 27.0], GOLD); // grip
-    s.circle(x + 6.0 * m, y + 7.0, 4.5, GOLD); // trigger guard, in front of the grip
-    s.circle(x + 6.0 * m, y + 7.0, 2.8, INK);
+    s.circle(x - 6.0 * m, y + 7.0, 4.5, GOLD); // trigger guard
+    s.circle(x - 6.0 * m, y + 7.0, 2.8, INK);
 }
 
 fn bullets(s: &mut Smooth) {
@@ -418,12 +418,13 @@ fn bullets(s: &mut Smooth) {
         let (dx, dy) = (-n * 1.2, c * 1.2);
         s.poly(&[120.0 + 84.0 * c + dx, 120.0 + 84.0 * n + dy, 120.0 + 113.0 * c + dx, 120.0 + 113.0 * n + dy, 120.0 + 113.0 * c - dx, 120.0 + 113.0 * n - dy, 120.0 + 84.0 * c - dx, 120.0 + 84.0 * n - dy], GOLD);
     }
-    s.circle_grad(120.0, 120.0, 84.0, GOLD_L, GOLD_D, 80.0);
+    s.circle_grad(120.0, 120.0, 84.0, GOLD_L, GOLD_D, 79.0); // hole: the black centre covers it
+    s.circle(120.0, 120.0, 80.0, BLACK); // smooth inner edge
     ring_text(s, &BAND, "BULLETS", 98.0, false, GOLD, 0.0);
     ring_text(s, &BAND, "PAIR OF ACES", 98.0, true, GOLD, 0.0);
-    // Revolvers with grips turned in, each firing three bullets up along the band.
+    // Revolvers pointing up, each with three bullets above it.
     for (x, m) in [(24.0f32, 1.0f32), (216.0, -1.0)] {
-        revolver(s, x, 130.0, -m);
+        revolver(s, x, 130.0, m);
         for (dx, y) in [(14.0, 71.0), (3.5, 80.0), (5.5, 93.0)] {
             s.rrect(x + m * dx, y, 4.2, 9.0, 2.1, 0.0, GOLD); // upright and staggered like the original
         }
