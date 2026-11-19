@@ -173,7 +173,7 @@ let leaving = false;  // true while the user is disconnecting on purpose
 let up = false;
 // In debug mode "disconnect" also shows the board's firmware version.
 function connectLabel() {
-  connectBtn.textContent = !up ? 'connect' : logBox.hidden ? 'disconnect' : `disconnect ${boardVersion}`;
+  connectBtn.textContent = !up ? 'connect' : logBox.hidden ? 'disconnect' : `disconnect · ${boardVersion}`;
 }
 function setConnected(on) {
   up = on;
