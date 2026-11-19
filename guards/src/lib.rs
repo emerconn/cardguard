@@ -49,21 +49,33 @@ fn ring_text(s: &mut Smooth, t: &TextStyle, str: &str, r: f32, bottom: bool, c: 
     s.arc_text(t.font, t.scale, str, r, deg, t.spacing + extra, c, bottom);
 }
 
-/// Half the angle, in degrees, that ring_text spans with the same arguments.
-fn ring_text_half(t: &TextStyle, str: &str, r: f32, extra: f32) -> f32 {
+/// Angles, in degrees, from the middle of a ring_text (same arguments) out to the visible ink of its
+/// first and of its last letter: the advance's blank side bearings don't count.
+fn ring_text_ink(t: &TextStyle, str: &str, r: f32, extra: f32) -> (f32, f32) {
     let sp = t.spacing + extra;
     let len: f32 = str.bytes().map(|ch| Smooth::advance(t.font, t.scale, ch) + sp).sum();
-    (len - sp) / 2.0 / r * 180.0 / core::f32::consts::PI
+    let g = |ch: u8| &t.font.glyphs[(ch - t.font.first) as usize];
+    let (first, last) = (g(str.as_bytes()[0]), g(str.as_bytes()[str.len() - 1]));
+    let half = (len - sp) / 2.0;
+    let start = half - first.xo as f32 * t.scale;
+    let end = half - (last.adv as f32 - last.xo as f32 - last.w as f32) * t.scale;
+    let deg = 180.0 / core::f32::consts::PI / r;
+    (start * deg, end * deg)
 }
 
-/// n stars a side, evenly spaced (and as far from the text) in the gaps between the top and bottom ring_text.
+/// n stars a side between the top and bottom ring_text, with every visible gap equal: text to star,
+/// star to star and star to text. Each side is measured on its own letters' ink.
 fn ring_stars(s: &mut Smooth, top: (&TextStyle, &str, f32), bottom: (&TextStyle, &str, f32), r: f32, n: u32, size: f32) {
-    let a0 = -90.0 + ring_text_half(top.0, top.1, r, top.2);
-    let a1 = 90.0 - ring_text_half(bottom.0, bottom.1, r, bottom.2);
-    for i in 1..=n {
-        let side = a0 + (a1 - a0) * i as f32 / (n + 1) as f32;
-        for a in [side, 180.0 - side] {
-            star(s, 120.0 + r * fcos(rad(a)), 120.0 + r * fsin(rad(a)), size, GOLD);
+    let (top_start, top_end) = ring_text_ink(top.0, top.1, r, top.2);
+    let (bottom_start, bottom_end) = ring_text_ink(bottom.0, bottom.1, r, bottom.2);
+    let w = 2.0 * 0.95 * size * 180.0 / core::f32::consts::PI / r; // a star's width along the ring
+    // Right side runs from the top text's end to the bottom text's end; the left side is mirrored.
+    for (left, a0, a1) in [(false, -90.0 + top_end, 90.0 - bottom_end), (true, -90.0 + top_start, 90.0 - bottom_start)] {
+        let gap = (a1 - a0 - n as f32 * w) / (n + 1) as f32;
+        for i in 1..=n {
+            let side = a0 + i as f32 * gap + (i as f32 - 0.5) * w;
+            let a = rad(if left { 180.0 - side } else { side });
+            star(s, 120.0 + r * fcos(a), 120.0 + r * fsin(a), size, GOLD);
         }
     }
 }
@@ -596,7 +608,7 @@ fn virgin(s: &mut Smooth) {
     s.ellipse(122.0, 68.0, 18.5, 7.5, 20.0, GOLD_L);
     s.arc(106.0, 82.0, 4.5, 1.4, 20.0, 160.0, GOLD_D); // closed eye
     s.arc(108.0, 78.0, 6.5, 1.2, -150.0, -50.0, GOLD_D); // brow
-    limb(s, 99.0, 86.0, 102.0, 93.0, 1.4, 1.4, GOLD_D); // nose
+    limb(s, 100.5, 89.5, 102.0, 93.0, 1.4, 1.4, GOLD_D); // nose, starting below the eye
     s.ellipse(108.0, 100.0, 3.4, 1.5, 25.0, GOLD_D); // lips
 }
 
