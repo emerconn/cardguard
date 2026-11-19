@@ -28,6 +28,21 @@ cd ../guards && cargo test     # renderer tests on the PC
 - Editors: rust-analyzer needs `check.allTargets = false` (the firmware has no test harness);
   `.nvim.lua` sets it for Neovim (`vim.o.exrc = true`).
 
+### Flash the latest release
+
+Releases are git tags (`vX.Y.Z`, made on each merge to `main`); there is no binary to download. The
+build takes its version from the tag, so fetch the tags first:
+
+```sh
+git switch main && git pull --tags
+cd firmware && cargo run --release
+```
+
+On a release commit the version reads `v0.2.0`; later commits read like `v0.2.0-2-gabc1234`, and without
+the tags just a commit hash. No tests needed: `main`'s firmware was smoke-tested on the board in its PR.
+Check the board's version in the web app's **debug** log (or `espflash monitor`) after a reset:
+`cardguard v0.2.0`.
+
 Pins are in `firmware/src/main.rs` (vendor pinout, RST not wired). Board specs, pinout, dimensions and sources:
 [`docs/hardware.md`](docs/hardware.md).
 
