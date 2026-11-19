@@ -107,23 +107,28 @@ fn chip_leader(s: &mut Smooth) {
     s.circle(120.0, 120.0, 81.0, PAPER);
 
     s.clip(81.0); // bands stay inside the white face; gold edges run out to the ring
-    s.rect(0.0, 77.5, 240.0, 37.0, GOLD);
-    s.rect(0.0, 79.5, 240.0, 33.0, PAPER);
-    s.rect(0.0, 135.0, 240.0, 36.0, GOLD);
-    s.rect(0.0, 137.0, 240.0, 32.0, INK);
+    s.rect(0.0, 77.5, 240.0, 34.5, GOLD); // bottom line ends level with the POKER plaque
+    s.rect(0.0, 79.5, 240.0, 30.5, PAPER);
+    s.rect(0.0, 147.0, 240.0, 24.0, GOLD);
+    s.rect(0.0, 149.0, 240.0, 20.0, INK);
     s.clip(0.0);
 
     let outline = [66.0, 76.0, 174.0, 76.0, 174.0, 128.0, 120.0, 186.0, 66.0, 128.0];
     let body = [67.5, 77.5, 172.5, 77.5, 172.5, 127.4, 120.0, 183.8, 67.5, 127.4];
     s.poly(&outline, GOLD);
     s.poly(&body, PAPER);
-    s.tri(76.95, 119.5, 118.5, 119.5, 118.5, 173.4, GOLD); // 1.5px gold borders
-    s.tri(121.5, 119.5, 163.05, 119.5, 121.5, 173.4, GOLD);
-    s.tri(80.0, 121.0, 117.0, 121.0, 117.0, 169.0, RED); // split by a white T, as on the coin
-    s.tri(123.0, 121.0, 160.0, 121.0, 123.0, 169.0, INK);
+    // Measured off the coin: flat top, vertical inner edge, outer edge along the shield side.
+    // The gold copies, grown 1.5px, are the borders.
+    s.tri(73.83, 120.5, 117.5, 120.5, 117.5, 173.7, GOLD);
+    s.tri(122.5, 120.5, 166.17, 120.5, 122.5, 173.7, GOLD);
+    s.tri(77.0, 122.0, 116.0, 122.0, 116.0, 169.5, RED);
+    s.tri(124.0, 122.0, 163.0, 122.0, 124.0, 169.5, INK);
 
-    s.rect(67.0, 83.0, 106.0, 32.0, GOLD_D);
-    s.rect(69.5, 85.5, 101.0, 27.0, GOLD);
+    s.rect(69.0, 83.0, 102.0, 29.0, INK); // white gap to the shield's gold edge
+    s.rect(70.0, 84.0, 100.0, 27.0, GOLD);
+    for (dx, dy) in [(0.8, 0.8), (-0.8, 0.8), (0.8, -0.8), (-0.8, -0.8)] {
+        text(s, &HEADLINE, "POKER", 120.0 + dx, 99.0 + dy, INK); // black outline
+    }
     text(s, &HEADLINE, "POKER", 120.0, 99.0, RED);
 
     spade(s, 84.0, 66.0, INK, 1.0, 0.0);
