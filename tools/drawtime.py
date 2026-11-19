@@ -39,8 +39,13 @@ p.close()
 p = connect(time.time() + 10)
 seen = {}
 guard, ms = next_draw(p, time.time() + 10)
-while guard not in seen:
-    seen[guard] = ms
-    print(f"guard {guard}: {ms} ms")
-    p.write(b"n")
-    guard, ms = next_draw(p, time.time() + 30)
+p.write(b"l")  # button off, so a press can't step a guard mid-run ('u' turns it back on)
+try:
+    while guard not in seen:
+        seen[guard] = ms
+        print(f"guard {guard}: {ms} ms")
+        p.write(b"n")
+        guard, ms = next_draw(p, time.time() + 30)
+finally:
+    p.write(b"u")
+    time.sleep(0.1)  # let the byte go out before the process exits

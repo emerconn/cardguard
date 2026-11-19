@@ -355,8 +355,15 @@ async fn serial(mut rx: UsbSerialJtagRx<'static, Async>) {
             match c {
                 b'n' => CMD.send(Cmd::Next).await,
                 b'z' => CMD.send(Cmd::Sleep(5)).await,
-                b'l' => BUTTON_OFF.store(true, Ordering::Relaxed),
-                b'u' => BUTTON_OFF.store(false, Ordering::Relaxed),
+                // Acked on serial only, so the test can confirm it without filling the BLE backlog.
+                b'l' => {
+                    BUTTON_OFF.store(true, Ordering::Relaxed);
+                    esp_println::println!("button: off");
+                }
+                b'u' => {
+                    BUTTON_OFF.store(false, Ordering::Relaxed);
+                    esp_println::println!("button: on");
+                }
                 _ => {}
             }
         }

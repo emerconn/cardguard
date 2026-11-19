@@ -10,9 +10,9 @@ use smooth::{fcos, fsin, rad, rgb565, Font, Smooth};
 
 pub type Scene = fn(&mut Smooth<'_>);
 
-pub static GUARDS: [Scene; 7] = [chip_leader, ducks, jack_king_off, donk, bullets, gone_fishing, single_moms];
+pub static GUARDS: [Scene; 8] = [chip_leader, ducks, jack_king_off, donk, bullets, gone_fishing, single_moms, german_virgin];
 /// Shown in the web app (sent over BLE), same order as GUARDS.
-pub static GUARD_NAMES: [&str; GUARDS.len()] = ["Chip Leader", "Ducks", "Jack King Off", "Donk", "Bullets", "Gone Fishing", "Single Moms"];
+pub static GUARD_NAMES: [&str; GUARDS.len()] = ["Chip Leader", "Ducks", "Jack King Off", "Donk", "Bullets", "Gone Fishing", "Single Moms", "German Virgin"];
 
 const BLACK: u16 = 0;
 const GOLD_L: u16 = rgb565(251, 224, 138);
@@ -47,6 +47,37 @@ fn text(s: &mut Smooth, t: &TextStyle, str: &str, x: f32, y: f32, c: u16) {
 fn ring_text(s: &mut Smooth, t: &TextStyle, str: &str, r: f32, bottom: bool, c: u16, extra: f32) {
     let deg = if bottom { 90.0 } else { -90.0 };
     s.arc_text(t.font, t.scale, str, r, deg, t.spacing + extra, c, bottom);
+}
+
+/// Angles, in degrees, from the middle of a ring_text (same arguments) out to the visible ink of its
+/// first and of its last letter: the advance's blank side bearings don't count.
+fn ring_text_ink(t: &TextStyle, str: &str, r: f32, extra: f32) -> (f32, f32) {
+    let sp = t.spacing + extra;
+    let len: f32 = str.bytes().map(|ch| Smooth::advance(t.font, t.scale, ch) + sp).sum();
+    let g = |ch: u8| &t.font.glyphs[(ch - t.font.first) as usize];
+    let (first, last) = (g(str.as_bytes()[0]), g(str.as_bytes()[str.len() - 1]));
+    let half = (len - sp) / 2.0;
+    let start = half - first.xo as f32 * t.scale;
+    let end = half - (last.adv as f32 - last.xo as f32 - last.w as f32) * t.scale;
+    let deg = 180.0 / core::f32::consts::PI / r;
+    (start * deg, end * deg)
+}
+
+/// n stars a side between the top and bottom ring_text, with every visible gap equal: text to star,
+/// star to star and star to text. Each side is measured on its own letters' ink.
+fn ring_stars(s: &mut Smooth, top: (&TextStyle, &str, f32), bottom: (&TextStyle, &str, f32), r: f32, n: u32, size: f32) {
+    let (top_start, top_end) = ring_text_ink(top.0, top.1, r, top.2);
+    let (bottom_start, bottom_end) = ring_text_ink(bottom.0, bottom.1, r, bottom.2);
+    let w = 2.0 * 0.95 * size * 180.0 / core::f32::consts::PI / r; // a star's width along the ring
+    // Right side runs from the top text's end to the bottom text's end; the left side is mirrored.
+    for (left, a0, a1) in [(false, -90.0 + top_end, 90.0 - bottom_end), (true, -90.0 + top_start, 90.0 - bottom_start)] {
+        let gap = (a1 - a0 - n as f32 * w) / (n + 1) as f32;
+        for i in 1..=n {
+            let side = a0 + i as f32 * gap + (i as f32 - 0.5) * w;
+            let a = rad(if left { 180.0 - side } else { side });
+            star(s, 120.0 + r * fcos(a), 120.0 + r * fsin(a), size, GOLD);
+        }
+    }
 }
 
 /// Maps shape-local offsets to the screen: centred on (x, y), scaled by k, rotated by deg.
@@ -117,12 +148,13 @@ fn chip_leader(s: &mut Smooth) {
     let body = [67.5, 77.5, 172.5, 77.5, 172.5, 127.4, 120.0, 183.8, 67.5, 127.4];
     s.poly(&outline, GOLD);
     s.poly(&body, PAPER);
-    // Measured off the coin: flat top, vertical inner edge, outer edge along the shield side.
+    // Flat top level with where the shield's sides turn into the chevron (y 127.4), vertical inner
+    // edge, outer edge parallel to the chevron 5 px in, so the gap is even all the way down.
     // The gold copies, grown 1.5px, are the borders.
-    s.tri(73.83, 120.5, 117.5, 120.5, 117.5, 173.7, GOLD);
-    s.tri(122.5, 120.5, 166.17, 120.5, 122.5, 173.7, GOLD);
-    s.tri(77.0, 122.0, 116.0, 122.0, 116.0, 169.5, RED);
-    s.tri(124.0, 122.0, 163.0, 122.0, 124.0, 169.5, INK);
+    s.tri(74.33, 127.4, 117.5, 127.4, 117.5, 173.78, GOLD);
+    s.tri(122.5, 127.4, 165.67, 127.4, 122.5, 173.78, GOLD);
+    s.tri(77.78, 128.9, 116.0, 128.9, 116.0, 169.96, RED);
+    s.tri(124.0, 128.9, 162.22, 128.9, 124.0, 169.96, INK);
 
     s.rect(69.0, 79.0, 102.0, 29.0, INK); // white gap to the shield's gold edge
     s.rect(71.0, 81.0, 98.0, 25.0, GOLD);
@@ -247,7 +279,9 @@ fn court_card(s: &mut Smooth, cx: f32, cy: f32, deg: f32, rank: u8, suit: Suit, 
     s.rrect(c.x(5.0, 0.0), c.y(5.0, 0.0), 33.0 * c.k, 63.0 * c.k, 2.0, deg, col);
     s.rrect(c.x(5.0, 0.0), c.y(5.0, 0.0), 30.0 * c.k, 60.0 * c.k, 1.5, deg, PAPER);
 
-    quad(s, -11.0, 21.0, 11.0, 21.0, 8.0, 4.0, -8.0, 4.0, col); // robe with a gold sash
+    // Robe with a gold sash. Its foot runs on under the frame lines (same colour), so no white
+    // shows where two anti-aliased edges would meet at the frame's inner edges (y = 21, x = ±11.5).
+    quad(s, -12.0, 22.0, 12.0, 22.0, 8.0, 4.0, -8.0, 4.0, col);
     quad(s, -2.5, 21.0, 2.5, 21.0, 1.5, 4.0, -1.5, 4.0, GOLD);
     if rank == b'K' {
         circle(s, 0.0, -1.0, 5.5, HAIR); // beard
@@ -294,15 +328,19 @@ fn star(s: &mut Smooth, x: f32, y: f32, r: f32, c: u16) {
 }
 
 /// A 56 x 78 number card centred on (cx, cy), rotated by deg, with its rank in the top corner
-/// (corner = -1 left, +1 right) and the suit under it, both turned with the card.
+/// (corner = -1 left, +1 right) and, if given, a small suit under it, both turned with the card.
 #[allow(clippy::too_many_arguments)]
-fn pip_card(s: &mut Smooth, cx: f32, cy: f32, deg: f32, rank: u8, corner: f32, suit: Suit, col: u16) {
+fn pip_card(s: &mut Smooth, cx: f32, cy: f32, deg: f32, rank: u8, corner: f32, suit: Option<Suit>, col: u16) {
     let p = Place::new(cx, cy, 1.0, deg);
     s.rrect(cx, cy, 58.5, 80.5, 5.0, deg, CARD_EDGE);
     s.rrect(cx, cy, 56.0, 78.0, 4.0, deg, PAPER);
-    let x = corner * 18.0; // 4 px padding from the card edge to the 12 px wide rank, suit centred under it
-    s.glyph(CARD_RANK.font, CARD_RANK.scale, rank, p.x(x, -27.0), p.y(x, -27.0), deg, col);
-    suit(s, p.x(x, -8.0), p.y(x, -8.0), col, 0.95, deg);
+    // 6 px from the card's top and side edges to the ~11 x 15 px rank, then a 5 px gap to the suit
+    // centred under it.
+    let x = corner * 16.5;
+    s.glyph(CARD_RANK.font, CARD_RANK.scale, rank, p.x(x, -25.5), p.y(x, -25.5), deg, col);
+    if let Some(suit) = suit {
+        suit(s, p.x(x, -5.0), p.y(x, -5.0), col, 0.95, deg);
+    }
 }
 
 const BROWN: u16 = rgb565(178, 98, 46);
@@ -389,15 +427,10 @@ fn donk(s: &mut Smooth) {
 
     ring_text(s, &BAND, "I'M A DONK", 99.0, false, GOLD, 5.0); // spaced out like the original
     ring_text(s, &BAND_LONG, "SEVEN TWO OFFSUIT", 99.0, true, GOLD, 0.0);
-    for side in [-30.0f32, -15.0, 0.0, 15.0] {
-        for left in [false, true] {
-            let a = rad(if left { 180.0 - side } else { side });
-            star(s, 120.0 + 99.0 * fcos(a), 120.0 + 99.0 * fsin(a), 6.5, GOLD);
-        }
-    }
+    ring_stars(s, (&BAND, "I'M A DONK", 5.0), (&BAND_LONG, "SEVEN TWO OFFSUIT", 0.0), 99.0, 4, 6.5);
 
-    pip_card(s, 86.0, 124.0, -15.0, b'7', -1.0, spade, INK);
-    pip_card(s, 154.0, 124.0, 15.0, b'2', 1.0, diamond, RED);
+    pip_card(s, 86.0, 124.0, -15.0, b'7', -1.0, Some(spade), INK);
+    pip_card(s, 154.0, 124.0, 15.0, b'2', 1.0, Some(diamond), RED);
     donkey(s);
 }
 
@@ -429,7 +462,7 @@ fn bullets(s: &mut Smooth) {
     s.circle_grad(120.0, 120.0, 84.0, GOLD_L, GOLD_D, 79.0); // hole: the black centre covers it
     s.circle(120.0, 120.0, 80.0, BLACK); // smooth inner edge
     ring_text(s, &BAND, "BULLETS", 98.0, false, GOLD, 0.0);
-    ring_text(s, &BAND, "PAIR OF ACES", 98.0, true, GOLD, 0.0);
+    ring_text(s, &BAND, "PAIR OF ACES", 98.0, true, GOLD, -1.0); // a touch tighter, clear of the spokes
     // Revolvers pointing up, each with three bullets above it.
     for (x, m) in [(26.0f32, 1.0f32), (214.0, -1.0)] {
         revolver(s, x, 140.0, 1.1, m);
@@ -438,10 +471,11 @@ fn bullets(s: &mut Smooth) {
         }
     }
 
-    pip_card(s, 101.0, 118.0, -12.0, b'A', -1.0, diamond, RED);
-    diamond(s, 101.0 + 4.0, 118.0 + 10.0, RED, 1.5, -12.0);
-    pip_card(s, 142.0, 122.0, 10.0, b'A', -1.0, spade, INK);
-    spade(s, 142.0 + 2.0, 122.0 + 10.0, INK, 1.9, 10.0);
+    // Aces: rank in the corner, one big suit in the middle of the card.
+    pip_card(s, 101.0, 118.0, -12.0, b'A', -1.0, None, RED);
+    diamond(s, 101.0, 118.0, RED, 1.5, -12.0);
+    pip_card(s, 142.0, 122.0, 10.0, b'A', -1.0, None, INK);
+    spade(s, 142.0, 122.0, INK, 1.9, 10.0);
 }
 
 /// A gold fish hook about 15 x 26 px times k: eye at the top, bend at the bottom curling round to a
@@ -521,6 +555,96 @@ fn single_moms(s: &mut Smooth) {
     l(s, (201.0, 178.0), (186.0, 210.0), 8.0, 5.0); // back leg
     l(s, (186.0, 210.0), (177.0, 241.0), 5.0, 3.0);
     l(s, (177.0, 241.0), (169.0, 252.0), 3.0, 2.2);
+}
+
+/// Half-size number card, as small as the cards in a relief: corner rank over one pip.
+fn mini_card(s: &mut Smooth, cx: f32, cy: f32, deg: f32, rank: u8, suit: Suit, col: u16) {
+    let p = Place::new(cx, cy, 1.0, deg);
+    s.rrect(cx, cy, 30.5, 42.5, 3.0, deg, CARD_EDGE);
+    s.rrect(cx, cy, 28.0, 40.0, 2.5, deg, PAPER);
+    s.glyph(CARD_INDEX.font, CARD_INDEX.scale, rank, p.x(-7.0, -11.0), p.y(-7.0, -11.0), deg, col);
+    suit(s, p.x(0.0, 4.0), p.y(0.0, 4.0), col, 1.0, deg); // centred, just below the rank
+}
+
+/// Gold-relief woman after assets/german_virgin.png: head bowed left over the cards, long hair swept
+/// from the forehead over the top, down her back and in a lock beside her face, bare shoulder on the
+/// right, forearm with a bangle rising to the cards. Each group: dark grown pass = outline, then fill.
+fn virgin(s: &mut Smooth) {
+    // Hair swept over the top, down the back, and in a lock beside the face.
+    let hair = [(126.0, 60.0, 48.0, 20.0, 10.0), (172.0, 108.0, 22.0, 50.0, -20.0), (92.0, 98.0, 11.0, 34.0, 15.0)];
+    for pass in 0..2 {
+        let (g, c) = if pass == 1 { (0.0, GOLD_L) } else { (1.6, GOLD_D) };
+        for (x, y, rx, ry, deg) in hair {
+            s.ellipse(x, y, rx + g, ry + g, deg, c);
+        }
+    }
+    for (x, y, rx, ry, deg) in hair {
+        // Strands: gently bowed arcs along the lock, stopping short of its ends so they stay inside
+        // the hair and never turn sharply (tight turns blur).
+        let (a, b, th) = if rx >= ry { (rx, ry, deg) } else { (ry, rx, deg + 90.0) };
+        let (ux, uy) = (fcos(rad(th)), fsin(rad(th)));
+        let (vx, vy) = (-uy, ux); // across the lock
+        let n = if b > 15.0 { 3 } else { 1 };
+        for i in 1..=n {
+            let o = b * (2.0 * i as f32 / (n + 1) as f32 - 1.0) * 0.8;
+            let sg = if o < 0.0 { -1.0 } else { 1.0 };
+            let bow = 2.0;
+            let f = (libm::fabsf(o) + bow) / b;
+            let h = a * libm::sqrtf(1.0 - f * f) - 4.0; // half length
+            let r = (h * h + bow * bow) / (2.0 * bow);
+            let m = o + sg * (bow - r); // arc centre, across the lock
+            let mid = th + 90.0 * sg; // direction from the centre to the arc's middle
+            let half = libm::asinf(h / r) * 180.0 / core::f32::consts::PI;
+            s.arc(x + vx * m, y + vy * m, r, 1.5, mid - half, mid + half, GOLD_D);
+        }
+    }
+    for pass in 0..2 {
+        let (g, c) = if pass == 1 { (0.0, GOLD_L) } else { (1.6, GOLD_D) };
+        s.ellipse(146.0, 170.0, 40.0 + g, 54.0 + g, -15.0, c); // back and chest, running off the bottom
+        s.ellipse(166.0, 128.0, 24.0 + g, 20.0 + g, -30.0, c); // rounded shoulder
+        limb(s, 168.0, 132.0, 160.0, 215.0, 30.0 + g, 26.0 + g, c); // upper arm hanging off the bottom
+        limb(s, 118.0, 98.0, 128.0, 118.0, 13.0 + g, 15.0 + g, c); // neck
+        s.ellipse(112.0, 86.0, 17.0 + g, 22.0 + g, 25.0, c); // face, bowed towards the cards
+    }
+    for pass in 0..2 {
+        let (g, c) = if pass == 1 { (0.0, GOLD_L) } else { (1.6, GOLD_D) };
+        limb(s, 88.0, 144.0, 124.0, 215.0, 10.0 + g, 15.0 + g, c); // forearm in front, elbow off the bottom
+    }
+    limb(s, 154.0, 150.0, 148.0, 210.0, 1.2, 1.2, GOLD_D); // inside edge of the upper arm
+    s.arc(140.0, 142.0, 22.0, 1.2, 200.0, 250.0, GOLD_D); // collarbone
+    s.ellipse(122.0, 68.0, 20.0, 9.0, 20.0, GOLD_D); // fringe over the forehead
+    s.ellipse(122.0, 68.0, 18.5, 7.5, 20.0, GOLD_L);
+    s.arc(106.0, 82.0, 4.5, 1.4, 20.0, 160.0, GOLD_D); // closed eye
+    s.arc(108.0, 78.0, 6.5, 1.2, -150.0, -50.0, GOLD_D); // brow
+    limb(s, 100.5, 89.5, 102.0, 93.0, 1.4, 1.4, GOLD_D); // nose, starting below the eye
+    s.ellipse(108.0, 100.0, 3.4, 1.5, 25.0, GOLD_D); // lips
+}
+
+fn german_virgin(s: &mut Smooth) {
+    s.fill(BLACK);
+    s.circle_grad(120.0, 120.0, 119.5, GOLD_L, GOLD_D, 112.0);
+    s.circle_grad(120.0, 120.0, 112.0, INK, INK, 84.0);
+    s.circle_grad(120.0, 120.0, 84.0, GOLD_L, GOLD_D, 80.0); // hole: the gold face covers it
+    s.circle(120.0, 120.0, 80.0, GOLD_D);
+    s.circle_grad(120.0, 120.0, 78.5, GOLD, GOLD_D, 0.0); // darker than the figure so the relief reads
+
+    ring_text(s, &BAND, "GERMAN VIRGIN", 98.0, false, GOLD, 0.0);
+    ring_text(s, &BAND, "NINE-NINE", 98.0, true, GOLD, 0.0);
+    for side in [-28.0f32, -10.0, 8.0, 26.0, 44.0] {
+        for left in [false, true] {
+            let a = rad(if left { 180.0 - side } else { side });
+            star(s, 120.0 + 98.0 * fcos(a), 120.0 + 98.0 * fsin(a), 6.0, GOLD);
+        }
+    }
+
+    s.clip(78.5); // the figure runs off the face like the relief
+    virgin(s);
+    mini_card(s, 60.0, 114.0, -14.0, b'9', spade, INK);
+    mini_card(s, 80.0, 108.0, -4.0, b'9', heart, RED);
+    s.ellipse(84.0, 132.0, 6.5, 9.5, -10.0, GOLD_D); // fingers over the card's lower edge
+    s.ellipse(84.0, 132.0, 5.0, 8.0, -10.0, GOLD_L);
+    limb(s, 82.0, 145.0, 95.0, 142.0, 2.2, 2.2, GOLD_D); // bangle
+    s.clip(0.0);
 }
 
 /// Shown briefly when a client asks for a guard that doesn't exist; not a guard itself.
