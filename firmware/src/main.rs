@@ -217,6 +217,7 @@ async fn main(spawner: Spawner) -> ! {
     let mut display = Display::new(spi, Output::new(p.GPIO2, Level::High, OutputConfig::default())).await;
     show(&mut display, current).await;
 
+    log!("cardguard {}", env!("CARDGUARD_VERSION"));
     // After display + BLE are up, so it shows what designs and features actually leave free.
     log!("heap: {} KB free, {} KB total", esp_alloc::HEAP.free() / 1024, (esp_alloc::HEAP.free() + esp_alloc::HEAP.used()) / 1024);
 

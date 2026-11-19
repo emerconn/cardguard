@@ -72,6 +72,7 @@ async def wait_for(lines, pattern, timeout):
 async def main():
     reset_and_read_serial()
     check("boots and draws guard 0", await wait_for(serial_lines, r"guard 0 drawn in \d+ ms", 10))
+    check("prints its version", await wait_for(serial_lines, r"^cardguard \S+$", 5))
     heap = await wait_for(serial_lines, r"heap: (\d+) KB free", 5)
     check("prints free heap", heap)
 
