@@ -20,6 +20,8 @@ concurrency:
 
 jobs:
   deploy:
+    # A failed Release leaves the live page as it was; a manual run always deploys.
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
