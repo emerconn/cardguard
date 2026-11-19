@@ -559,30 +559,45 @@ fn virgin(s: &mut Smooth) {
         }
     }
     for (x, y, rx, ry, deg) in hair {
-        // strands: the outline repeated inwards, so they never leave the hair; stop before the
-        // ends turn too tightly to stay sharp
-        let mut d = 5.0;
-        while rx.min(ry) - d >= 9.0 {
-            s.ellipse(x, y, rx - d, ry - d, deg, GOLD_D);
-            s.ellipse(x, y, rx - d - 1.5, ry - d - 1.5, deg, GOLD_L);
-            d += 5.0;
+        // Strands: gently bowed arcs along the lock, stopping short of its ends so they stay inside
+        // the hair and never turn sharply (tight turns blur).
+        let (a, b, th) = if rx >= ry { (rx, ry, deg) } else { (ry, rx, deg + 90.0) };
+        let (ux, uy) = (fcos(rad(th)), fsin(rad(th)));
+        let (vx, vy) = (-uy, ux); // across the lock
+        let n = if b > 15.0 { 3 } else { 1 };
+        for i in 1..=n {
+            let o = b * (2.0 * i as f32 / (n + 1) as f32 - 1.0) * 0.8;
+            let sg = if o < 0.0 { -1.0 } else { 1.0 };
+            let bow = 2.0;
+            let f = (libm::fabsf(o) + bow) / b;
+            let h = a * libm::sqrtf(1.0 - f * f) - 4.0; // half length
+            let r = (h * h + bow * bow) / (2.0 * bow);
+            let m = o + sg * (bow - r); // arc centre, across the lock
+            let mid = th + 90.0 * sg; // direction from the centre to the arc's middle
+            let half = libm::asinf(h / r) * 180.0 / core::f32::consts::PI;
+            s.arc(x + vx * m, y + vy * m, r, 1.5, mid - half, mid + half, GOLD_D);
         }
     }
     for pass in 0..2 {
         let (g, c) = if pass == 1 { (0.0, GOLD_L) } else { (1.6, GOLD_D) };
-        s.ellipse(165.0, 152.0, 32.0 + g, 46.0 + g, -20.0, c); // bare shoulder and back
-        s.ellipse(126.0, 182.0, 30.0 + g, 28.0 + g, 0.0, c); // chest below the arm
-        limb(s, 122.0, 100.0, 134.0, 134.0, 13.0 + g, 20.0 + g, c); // neck
+        s.ellipse(146.0, 170.0, 40.0 + g, 54.0 + g, -15.0, c); // back and chest, running off the bottom
+        s.ellipse(166.0, 128.0, 24.0 + g, 20.0 + g, -30.0, c); // rounded shoulder
+        limb(s, 168.0, 132.0, 160.0, 215.0, 30.0 + g, 26.0 + g, c); // upper arm hanging off the bottom
+        limb(s, 118.0, 98.0, 128.0, 118.0, 13.0 + g, 15.0 + g, c); // neck
         s.ellipse(112.0, 86.0, 17.0 + g, 22.0 + g, 25.0, c); // face, bowed towards the cards
-        limb(s, 88.0, 144.0, 118.0, 200.0, 10.0 + g, 17.0 + g, c); // forearm up to the cards
     }
+    for pass in 0..2 {
+        let (g, c) = if pass == 1 { (0.0, GOLD_L) } else { (1.6, GOLD_D) };
+        limb(s, 88.0, 144.0, 124.0, 215.0, 10.0 + g, 15.0 + g, c); // forearm in front, elbow off the bottom
+    }
+    limb(s, 154.0, 150.0, 148.0, 210.0, 1.2, 1.2, GOLD_D); // inside edge of the upper arm
+    s.arc(140.0, 142.0, 22.0, 1.2, 200.0, 250.0, GOLD_D); // collarbone
     s.ellipse(122.0, 68.0, 20.0, 9.0, 20.0, GOLD_D); // fringe over the forehead
     s.ellipse(122.0, 68.0, 18.5, 7.5, 20.0, GOLD_L);
     s.arc(106.0, 82.0, 4.5, 1.4, 20.0, 160.0, GOLD_D); // closed eye
     s.arc(108.0, 78.0, 6.5, 1.2, -150.0, -50.0, GOLD_D); // brow
     limb(s, 99.0, 86.0, 102.0, 93.0, 1.4, 1.4, GOLD_D); // nose
     s.ellipse(108.0, 100.0, 3.4, 1.5, 25.0, GOLD_D); // lips
-    s.arc(166.0, 156.0, 26.0, 1.0, 190.0, 260.0, GOLD_D); // shoulder blade
 }
 
 fn german_virgin(s: &mut Smooth) {
